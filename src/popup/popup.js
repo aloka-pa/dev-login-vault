@@ -42,6 +42,8 @@
   $('otherChev').innerHTML = I.chevron;
   $('addBtn').innerHTML = I.plus;
   $('addBtn').append(document.createTextNode('Add a login'));
+  $('switchUserBtn').innerHTML = I.switchUser;
+  $('switchUserBtn').append(document.createTextNode('Switch user'));
 
   // ---- Start ----
   async function start() {

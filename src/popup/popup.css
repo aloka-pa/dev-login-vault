@@ -19,16 +19,20 @@ main { padding: 14px; display: grid; gap: 13px; }
 .row { display: flex; gap: 8px; margin-top: 14px; }
 
 /* Site header */
-.site { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.site { display: grid !important; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 10px; }
-.site-label { grid-column: 1; }
+/* Two rows, two columns: "CURRENT SITE" + Switch user pill / host + environment badge. Right column pills line up. */
+.site { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px 10px; }
+.site-label { grid-column: 1; grid-row: 1; }
+.site .host { grid-column: 1; grid-row: 2; }
 .switch-user {
-  grid-column: 2; justify-self: end; background: none; border: 0; padding: 0; cursor: pointer; font: inherit;
-  font-size: 11.5px; font-weight: 600; color: var(--dlv-navy-light); text-decoration: underline;
+  grid-column: 2; grid-row: 1; justify-self: end;
+  display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 10px; box-sizing: border-box;
+  border: 1px solid var(--dlv-border-strong); border-radius: 999px; background: var(--dlv-surface-2);
+  color: var(--dlv-text-2); font: inherit; font-size: 11.5px; font-weight: 650; cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
-.switch-user:hover { color: var(--dlv-text); }
-.site .host { grid-column: 1; }
-.site .dlv-badge { grid-column: 2; justify-self: end; }
+.switch-user:hover { background: var(--dlv-surface-3); color: var(--dlv-text); border-color: #45566E; }
+.switch-user svg { width: 12px; height: 12px; }
+.site .dlv-badge { grid-column: 2; grid-row: 2; justify-self: end; height: 22px; box-sizing: border-box; line-height: 15px; }
 .site .dlv-badge { max-width: 150px; overflow: hidden; text-overflow: ellipsis; display: inline-block; }
 .site .dlv-badge::before { display: inline-block; margin-right: 6px; vertical-align: middle; }
 .site-label { font-size: 11px; font-weight: 600; color: var(--dlv-text-3); text-transform: uppercase; letter-spacing: 0.6px; }

@@ -1,5 +1,5 @@
 body { width: 372px; min-height: 220px; }
-main { padding: 14px; display: grid; gap: 12px; }
+main { padding: 14px; display: grid; gap: 13px; }
 
 .icon-btn {
   display: inline-grid; place-items: center; width: 32px; height: 32px; padding: 0;

@@ -1,4 +1,4 @@
-# Dev Login Vault
+# Login Vault
 
 A personal browser extension for Microsoft Edge and Google Chrome that remembers your logins (work dev/QA instances,
 university, any other site), encrypted on this device.

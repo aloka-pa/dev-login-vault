@@ -114,7 +114,7 @@
     const host = new URL(p.origin).host;
     // N/A logins are not tied to Local/Server, so the message names no environment for them.
     const suffix = env === 'na' ? '' : ` (${env === 'local' || env === 'remote' ? p.labels[env] : 'choose environment'})`;
-    if (p.kind === 'locked') return `Unlock Dev Login Vault to save "${p.username}". Click the padlock in the toolbar.`;
+    if (p.kind === 'locked') return `Unlock Login Vault to save "${p.username}". Click the padlock in the toolbar.`;
     if (p.kind === 'update') return `Update password for "${p.username}" on ${host}${suffix}?`;
     return `Save login "${p.username}" for ${host}${suffix}?`;
   }
@@ -124,12 +124,12 @@
     const host = el('div');
     const root = host.attachShadow({ mode: 'closed' });
     root.appendChild(el('style', {}, STYLE));
-    const bar = el('div', { class: 'bar', role: 'dialog', ariaLabel: 'Dev Login Vault' });
+    const bar = el('div', { class: 'bar', role: 'dialog', ariaLabel: 'Login Vault' });
     const msg = el('span', { class: 'msg' }, message(p, p.env));
     const logo = el('span', { class: 'logo' });
     logo.innerHTML = LOCK_SVG;
     const text = el('div', { class: 'text' });
-    text.append(el('span', { class: 'brand' }, 'Dev Login Vault'), msg);
+    text.append(el('span', { class: 'brand' }, 'Login Vault'), msg);
     const head = el('div', { class: 'head' });
     head.append(logo, text);
     bar.append(head);
@@ -155,7 +155,7 @@
         save.disabled = true;
         const reply = await send({ type: 'savePending', env: select.value });
         if (reply && reply.ok) {
-          msg.textContent = 'Saved to Dev Login Vault';
+          msg.textContent = 'Saved to Login Vault';
           msg.className = 'msg ok';
           controls.remove();
           setTimeout(removeBar, 2000);

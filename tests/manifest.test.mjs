@@ -9,6 +9,7 @@ const read = () => JSON.parse(readFileSync(path.join(root, 'manifest.json'), 'ut
 
 test('manifest is valid MV3', () => {
   assert.equal(read().manifest_version, 3);
+  assert.equal(read().name, 'Login Vault');
 });
 
 test('permissions are exactly storage, webRequest, scripting, idle', () => {

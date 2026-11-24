@@ -55,7 +55,7 @@
     } catch { state.origin = null; }
 
     const status = await send({ type: 'status' });
-    if (!status.ok) { show('noSiteView'); $('noSiteText').textContent = 'Dev Login Vault is not responding. Reload the extension.'; return; }
+    if (!status.ok) { show('noSiteView'); $('noSiteText').textContent = 'Login Vault is not responding. Reload the extension.'; return; }
     if (!status.data.initialized) { show('setupView'); $('setupPw').focus(); return; }
     if (!status.data.unlocked) { show('lockedView'); $('unlockPw').focus(); return; }
     await showList();
@@ -101,11 +101,11 @@
   });
 
   $('recoveryDownload').addEventListener('click', () => {
-    const text = `Dev Login Vault recovery key\r\n\r\n${$('recoveryKeyText').dataset.key}\r\n\r\n`
+    const text = `Login Vault recovery key\r\n\r\n${$('recoveryKeyText').dataset.key}\r\n\r\n`
       + `Created ${new Date().toLocaleString()}.\r\nUse it on the unlock screen: "Forgot master password?".\r\n`
       + 'Anyone with this key can open your vault. Keep it offline and safe.\r\n';
     const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
-    const a = el('a', { href: url, download: 'dev-login-vault-recovery-key.txt' });
+    const a = el('a', { href: url, download: 'login-vault-recovery-key.txt' });
     document.body.append(a);
     a.click();
     a.remove();

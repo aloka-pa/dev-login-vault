@@ -6,7 +6,7 @@
   const MAX_ITERATIONS = 10_000_000; // a hand-made file must not freeze the page
 
   class InvalidFileError extends Error {
-    constructor(reason) { super(`This is not a Dev Login Vault export file (${reason})`); this.name = 'InvalidFileError'; }
+    constructor(reason) { super(`This is not a Login Vault export file (${reason})`); this.name = 'InvalidFileError'; }
   }
 
   const isBase64 = (s) => s.length > 0 && s.length % 4 === 0 && /^[A-Za-z0-9+/]+={0,2}$/.test(s);
@@ -41,7 +41,7 @@
 
   function fileName(date) {
     const p = (n) => String(n).padStart(2, '0');
-    return `dev-login-vault-${date.getFullYear()}${p(date.getMonth() + 1)}${p(date.getDate())}-${p(date.getHours())}${p(date.getMinutes())}.dlv.json`;
+    return `login-vault-${date.getFullYear()}${p(date.getMonth() + 1)}${p(date.getDate())}-${p(date.getHours())}${p(date.getMinutes())}.dlv.json`;
   }
 
   DLV.exportFile = { build, parse, fileName, InvalidFileError };

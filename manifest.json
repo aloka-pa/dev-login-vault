@@ -1,13 +1,13 @@
 {
   "manifest_version": 3,
-  "name": "Dev Login Vault",
+  "name": "Login Vault",
   "version": "1.0.0",
   "description": "Saves and fills your logins, encrypted on this device. Tells the local IIS copy of a site from the server copy.",
   "permissions": ["storage", "webRequest", "scripting", "idle"],
   "host_permissions": ["<all_urls>"],
   "background": { "service_worker": "src/background/worker.js" },
   "action": {
-    "default_title": "Dev Login Vault",
+    "default_title": "Login Vault",
     "default_popup": "src/popup/popup.html",
     "default_icon": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png", "128": "icons/icon128.png" }
   },

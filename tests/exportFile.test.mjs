@@ -20,7 +20,7 @@ test('export round-trips unicode', async () => {
 test('file has the documented shape and no plaintext', async () => {
   const text = await X.build(sample(), 'export pw', FAST);
   const file = JSON.parse(text);
-  assert.equal(file.format, 'dev-login-vault');
+  assert.equal(file.format, 'dev-login-vault'); // kept after the rename so older exports still import
   assert.equal(file.version, 1);
   assert.deepEqual(Object.keys(file.kdf).sort(), ['iterations', 'name', 'salt']);
   assert.equal(file.kdf.name, 'PBKDF2-SHA-256');
@@ -55,7 +55,7 @@ test('decrypted content that is not a vault is rejected', async () => {
 });
 
 test('fileName pads month, day, hour, minute', () => {
-  assert.equal(X.fileName(new Date(2026, 0, 5, 7, 3)), 'dev-login-vault-20260105-0703.dlv.json');
+  assert.equal(X.fileName(new Date(2026, 0, 5, 7, 3)), 'login-vault-20260105-0703.dlv.json');
 });
 
 test('damaged iv or ciphertext is an invalid file, not a wrong password', async () => {

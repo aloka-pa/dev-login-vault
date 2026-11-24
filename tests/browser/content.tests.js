@@ -72,7 +72,7 @@ test('bar shows update text for kind update', async () => {
 test('bar for a locked vault asks to unlock and has no Save', async () => {
   stubReplies.pendingForTab = pending({ kind: 'locked' });
   await C().checkPending();
-  ok(bar().querySelector('.msg').textContent.startsWith('Unlock Dev Login Vault to save "ava"'), 'locked text');
+  ok(bar().querySelector('.msg').textContent.startsWith('Unlock Login Vault to save "ava"'), 'locked text');
   eq(bar().querySelector('[data-action="save"]'), null);
 });
 

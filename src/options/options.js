@@ -102,10 +102,10 @@
   });
 
   $('optRecoveryDownload').addEventListener('click', () => {
-    const text = `Dev Login Vault recovery key\r\n\r\n${$('optRecoveryKey').dataset.key}\r\n\r\nCreated ${new Date().toLocaleString()}.\r\n`
+    const text = `Login Vault recovery key\r\n\r\n${$('optRecoveryKey').dataset.key}\r\n\r\nCreated ${new Date().toLocaleString()}.\r\n`
       + 'Use it on the unlock screen: "Forgot master password?".\r\nAnyone with this key can open your vault. Keep it offline and safe.\r\n';
     const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
-    const a = el('a', { href: url, download: 'dev-login-vault-recovery-key.txt' });
+    const a = el('a', { href: url, download: 'login-vault-recovery-key.txt' });
     document.body.append(a);
     a.click();
     a.remove();
@@ -198,7 +198,7 @@
       try { vault = await DLV.exportFile.parse(await file.text(), $('importPw').value); }
       catch (err) {
         return say('importMsg', err instanceof DLV.crypto.WrongPasswordError ? 'Wrong password, or the file is damaged. Nothing was imported.'
-          : 'This is not a Dev Login Vault export file. Nothing was imported.', 'err');
+          : 'This is not a Login Vault export file. Nothing was imported.', 'err');
       }
       const r = await send({ type: 'importVault', vault });
       if (!r.ok) { if (lockedReply(r)) return start(); return say('importMsg', 'The file could not be imported. Nothing was changed.', 'err'); }

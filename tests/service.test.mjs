@@ -1,0 +1,356 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { loadLib } from './helpers/loadLib.mjs';
+import { createFakeStorage } from './helpers/fakeStorage.mjs';
+
+const DLV = await loadLib('env', 'crypto', 'vault', 'exportFile', 'service');
+const SITE = 'https://hrmmainphdev01.phrsandbox.dev';
+const SECRET = 'S3cret-Pässwörd';
+
+function make({ local = createFakeStorage(), session = createFakeStorage(), clock = { t: Date.parse('2026-11-24T08:00:00Z') } } = {}) {
+  const service = new DLV.VaultService({ local, session, now: () => new Date(clock.t), iterations: 1000 });
+  return { service, local, session, clock };
+}
+
+async function ready(opts) {
+  const ctx = make(opts);
+  await ctx.service.setup('master pw');
+  return ctx;
+}
+
+test('setup then status unlocked', async () => {
+  const { service } = make();
+  assert.deepEqual(await service.status(), { initialized: false, unlocked: false });
+  await service.setup('master pw');
+  assert.deepEqual(await service.status(), { initialized: true, unlocked: true });
+  await assert.rejects(service.setup('again'));
+});
+
+test('unlock with wrong password returns false and stays locked', async () => {
+  const { service } = await ready();
+  await service.lock();
+  assert.equal(await service.unlock('nope'), false);
+  assert.deepEqual(await service.status(), { initialized: true, unlocked: false });
+  await assert.rejects(service.getVault(), DLV.VaultService.LockedError);
+  assert.equal(await service.unlock('master pw'), true);
+});
+
+test('vault on disk never contains the password text', async () => {
+  const { service, local } = await ready();
+  await service.addEntry({ origin: SITE, env: 'local', username: 'ava', password: SECRET });
+  const disk = JSON.stringify(local.dump());
+  assert.ok(!disk.includes(SECRET));
+  assert.ok(!disk.includes('ava'));
+});
+
+test('lock removes key and pendings', async () => {
+  const { service, session } = await ready();
+  await service.setTabEnv(7, SITE, '127.0.0.1');
+  await service.putPending(7, { origin: SITE, username: 'ava', password: SECRET });
+  await service.lock();
+  const keys = Object.keys(session.dump());
+  assert.ok(!keys.includes('keyB64'));
+  assert.ok(!keys.some((k) => k.startsWith('pending:')));
+});
+
+test('new service instance resumes unlocked state and pending login', async () => {
+  const first = await ready();
+  await first.service.setTabEnv(7, SITE, '127.0.0.1');
+  await first.service.putPending(7, { origin: SITE, username: 'ava', password: SECRET });
+  const second = make({ local: first.local, session: first.session, clock: first.clock });
+  assert.deepEqual(await second.service.status(), { initialized: true, unlocked: true });
+  assert.equal((await second.service.getPending(7)).kind, 'save');
+  await second.service.savePending(7);
+  assert.equal((await second.service.listForSite(SITE, 'local')).current.length, 1);
+});
+
+test('pending expires after 120 s', async () => {
+  const { service, clock } = await ready();
+  await service.setTabEnv(7, SITE, '127.0.0.1');
+  await service.putPending(7, { origin: SITE, username: 'ava', password: SECRET });
+  clock.t += 119_000;
+  assert.ok(await service.getPending(7));
+  clock.t += 2_000;
+  assert.equal(await service.getPending(7), null);
+});
+
+test('getPending never exposes the password', async () => {
+  const { service } = await ready();
+  await service.setTabEnv(7, SITE, '127.0.0.1');
+  await service.putPending(7, { origin: SITE, username: 'ava', password: SECRET });
+  const pending = await service.getPending(7);
+  assert.ok(!JSON.stringify(pending).includes(SECRET));
+  assert.equal(pending.username, 'ava');
+  assert.equal(pending.env, 'local');
+  assert.deepEqual(pending.labels, { local: 'Local IIS', remote: 'Server' });
+});
+
+test('pending is "update" for known username with new password', async () => {
+  const { service } = await ready();
+  await service.addEntry({ origin: SITE, env: 'local', username: 'ava', password: 'old' });
+  await service.setTabEnv(7, SITE, '127.0.0.1');
+  await service.putPending(7, { origin: SITE, username: 'ava', password: 'new' });
+  assert.equal((await service.getPending(7)).kind, 'update');
+});
+
+test('pending for an already saved login is dropped', async () => {
+  const { service } = await ready();
+  await service.addEntry({ origin: SITE, env: 'local', username: 'ava', password: SECRET });
+  await service.setTabEnv(7, SITE, '127.0.0.1');
+  await service.putPending(7, { origin: SITE, username: 'ava', password: SECRET });
+  assert.equal(await service.getPending(7), null);
+});
+
+test('pending for unknown env requires env on save', async () => {
+  const { service } = await ready();
+  await service.putPending(7, { origin: SITE, username: 'ava', password: SECRET });
+  assert.equal((await service.getPending(7)).env, 'unknown');
+  await assert.rejects(service.savePending(7), DLV.VaultService.EnvRequiredError);
+  await service.savePending(7, 'remote');
+  assert.equal((await service.listForSite(SITE, 'remote')).current.length, 1);
+});
+
+test('environment comes from the latest response only', async () => {
+  const { service } = await ready();
+  await service.setTabEnv(7, SITE, '127.0.0.1');
+  assert.equal(await service.getTabEnv(7, SITE), 'local');
+  await service.setTabEnv(7, SITE, undefined);
+  assert.equal(await service.getTabEnv(7, SITE), 'unknown');
+  await service.setTabEnv(7, SITE, '52.1.2.3');
+  assert.equal(await service.getTabEnv(7, SITE), 'remote');
+  assert.equal(await service.getTabEnv(8, SITE), 'unknown');
+});
+
+test('locked pending reports kind locked and saves after unlock', async () => {
+  const { service } = await ready();
+  await service.lock();
+  await service.setTabEnv(7, SITE, '127.0.0.1');
+  await service.putPending(7, { origin: SITE, username: 'ava', password: SECRET });
+  assert.equal((await service.getPending(7)).kind, 'locked');
+  await assert.rejects(service.savePending(7), DLV.VaultService.LockedError);
+  await service.unlock('master pw');
+  assert.equal((await service.getPending(7)).kind, 'save');
+  await service.savePending(7);
+  assert.equal((await service.listForSite(SITE, 'local')).current[0].username, 'ava');
+});
+
+test('never for pending stops later prompts', async () => {
+  const { service } = await ready();
+  await service.setTabEnv(7, SITE, '127.0.0.1');
+  await service.putPending(7, { origin: SITE, username: 'ava', password: SECRET });
+  await service.neverForPending(7);
+  await service.putPending(7, { origin: SITE, username: 'bob', password: SECRET });
+  assert.equal(await service.getPending(7), null);
+});
+
+test('dismissPending removes it', async () => {
+  const { service } = await ready();
+  await service.putPending(7, { origin: SITE, username: 'ava', password: SECRET });
+  await service.dismissPending(7);
+  assert.equal(await service.getPending(7), null);
+});
+
+test('step-1 username pairs with the step-2 password', async () => {
+  const { service } = await ready();
+  await service.setTabEnv(7, SITE, '127.0.0.1');
+  await service.rememberStep1User(7, SITE, 'ava@qa.test');
+  await service.putPending(7, { origin: SITE, username: '', password: SECRET });
+  assert.equal((await service.getPending(7)).username, 'ava@qa.test');
+});
+
+test('step-1 username is cleared when the pending login is dismissed', async () => {
+  const { service } = await ready();
+  await service.rememberStep1User(7, SITE, 'ava@qa.test');
+  await service.putPending(7, { origin: SITE, username: '', password: SECRET });
+  await service.dismissPending(7);
+  assert.equal(await service.takeStep1User(7, SITE), null);
+});
+
+test('listForSite hides passwords and includes labels', async () => {
+  const { service } = await ready();
+  await service.addEntry({ origin: SITE, env: 'local', username: 'ava', password: SECRET, note: 'admin' });
+  await service.addEntry({ origin: SITE, env: 'remote', username: 'srv', password: SECRET });
+  await service.setLabel(SITE, 'local', 'Local IIS – philippinesdev');
+  const list = await service.listForSite(SITE, 'local');
+  assert.ok(!JSON.stringify(list).includes(SECRET));
+  assert.deepEqual(list.current.map((e) => [e.username, e.note, e.env]), [['ava', 'admin', 'local']]);
+  assert.deepEqual(list.other.map((e) => e.username), ['srv']);
+  assert.deepEqual(list.labels, { local: 'Local IIS – philippinesdev', remote: 'Server' });
+});
+
+test('getFillData refuses a different origin', async () => {
+  const { service } = await ready();
+  const { id } = await service.addEntry({ origin: SITE, env: 'local', username: 'ava', password: SECRET });
+  await assert.rejects(service.getFillData(id, 'https://evil.test'), DLV.VaultService.OriginMismatchError);
+  assert.deepEqual(await service.getFillData(id, SITE), { username: 'ava', password: SECRET });
+});
+
+test('getFillData marks the entry used', async () => {
+  const { service, clock } = await ready();
+  const a = await service.addEntry({ origin: SITE, env: 'local', username: 'a', password: 'x' });
+  await service.addEntry({ origin: SITE, env: 'local', username: 'b', password: 'x' });
+  clock.t += 60_000;
+  await service.getFillData(a.id, SITE);
+  assert.deepEqual((await service.listForSite(SITE, 'local')).current.map((e) => e.username), ['a', 'b']);
+});
+
+test('update and delete entries', async () => {
+  const { service } = await ready();
+  const { id } = await service.addEntry({ origin: SITE, env: 'local', username: 'ava', password: 'x' });
+  await service.updateEntry(id, { password: 'y', note: 'n' });
+  assert.deepEqual(await service.getFillData(id, SITE), { username: 'ava', password: 'y' });
+  await service.deleteEntry(id);
+  assert.equal((await service.listForSite(SITE, 'local')).current.length, 0);
+});
+
+test('settings are stored in the vault', async () => {
+  const { service } = await ready();
+  assert.deepEqual(await service.getSettings(), { autoLockMinutes: 30, submitAfterFill: false });
+  await service.setSettings({ submitAfterFill: true });
+  assert.deepEqual(await service.getSettings(), { autoLockMinutes: 30, submitAfterFill: true });
+});
+
+test('changePassword re-encrypts, old password fails', async () => {
+  const { service, local } = await ready();
+  await service.addEntry({ origin: SITE, env: 'local', username: 'ava', password: 'x' });
+  const oldSalt = local.dump().vaultBox.salt;
+  assert.equal(await service.changePassword('wrong', 'new pw'), false);
+  assert.equal(await service.changePassword('master pw', 'new pw'), true);
+  assert.notEqual(local.dump().vaultBox.salt, oldSalt);
+  await service.lock();
+  assert.equal(await service.unlock('master pw'), false);
+  assert.equal(await service.unlock('new pw'), true);
+  assert.equal((await service.listForSite(SITE, 'local')).current.length, 1);
+});
+
+test('import merges and reports counts', async () => {
+  const { service } = await ready();
+  await service.addEntry({ origin: SITE, env: 'local', username: 'ava', password: 'x' });
+  const other = await ready();
+  await other.service.addEntry({ origin: SITE, env: 'remote', username: 'srv', password: 'y' });
+  const counts = await service.importVault(await other.service.exportVaultPlain());
+  assert.deepEqual(counts, { added: 1, updated: 0, unchanged: 0 });
+  assert.equal((await service.listForSite(SITE, 'remote')).current.length, 1);
+});
+
+test('failed import leaves vault untouched', async () => {
+  const { service, local } = await ready();
+  await service.addEntry({ origin: SITE, env: 'local', username: 'ava', password: 'x' });
+  const before = JSON.stringify(local.dump());
+  await assert.rejects(service.importVault({ hello: 1 }), DLV.exportFile.InvalidFileError);
+  await assert.rejects(service.importVault({ version: 1, entries: [{ origin: SITE }], neverSave: [], envLabels: {} }), DLV.exportFile.InvalidFileError);
+  assert.equal(JSON.stringify(local.dump()), before);
+});
+
+test('concurrent changes are all kept', async () => {
+  const { service } = await ready();
+  await Promise.all(['a', 'b', 'c', 'd'].map((u) => service.addEntry({ origin: SITE, env: 'local', username: u, password: 'x' })));
+  assert.equal((await service.listForSite(SITE, 'local')).current.length, 4);
+});
+
+test('clearTab forgets the tab', async () => {
+  const { service, session } = await ready();
+  await service.setTabEnv(7, SITE, '127.0.0.1');
+  await service.putPending(7, { origin: SITE, username: 'ava', password: SECRET });
+  await service.rememberStep1User(7, SITE, 'x');
+  await service.clearTab(7);
+  assert.deepEqual(Object.keys(session.dump()), ['keyB64']);
+});
+
+test('deleteAll clears everything', async () => {
+  const { service, local, session } = await ready();
+  await service.deleteAll();
+  assert.deepEqual(local.dump(), {});
+  assert.deepEqual(session.dump(), {});
+  assert.deepEqual(await service.status(), { initialized: false, unlocked: false });
+});
+
+test('a duplicate capture with an empty username keeps the step-1 username', async () => {
+  const { service } = await ready();
+  await service.setTabEnv(7, SITE, '127.0.0.1');
+  await service.rememberStep1User(7, SITE, 'ava@qa.test');
+  await Promise.all([
+    service.putPending(7, { origin: SITE, username: '', password: SECRET }),
+    service.putPending(7, { origin: SITE, username: '', password: SECRET }),
+  ]);
+  await service.putPending(7, { origin: SITE, username: '', password: SECRET });
+  assert.equal((await service.getPending(7)).username, 'ava@qa.test');
+});
+
+test('an empty-username capture never replaces a named pending login', async () => {
+  const { service } = await ready();
+  await service.setTabEnv(7, SITE, '127.0.0.1');
+  await service.putPending(7, { origin: SITE, username: 'ava', password: SECRET });
+  await service.putPending(7, { origin: SITE, username: '', password: SECRET });
+  assert.equal((await service.getPending(7)).username, 'ava');
+});
+
+test('step-1 username is cleared once the login is saved', async () => {
+  const { service } = await ready();
+  await service.setTabEnv(7, SITE, '127.0.0.1');
+  await service.rememberStep1User(7, SITE, 'ava@qa.test');
+  await service.putPending(7, { origin: SITE, username: '', password: SECRET });
+  await service.savePending(7);
+  assert.equal(await service.takeStep1User(7, SITE), null);
+});
+
+test('unlock racing a password change leaves a working vault', async () => {
+  const session = createFakeStorage();
+  const { service } = await ready({ session });
+  await service.lock();
+  // The unlock starts first but its key write is slow, so without serialising it would land after the password change.
+  const realSet = session.set.bind(session);
+  let first = true;
+  session.set = async (obj) => {
+    if ('keyB64' in obj && first) { first = false; await new Promise((r) => setTimeout(r, 200)); }
+    return realSet(obj);
+  };
+  const unlocking = service.unlock('master pw');
+  await new Promise((r) => setTimeout(r, 20));
+  await Promise.all([unlocking, service.changePassword('master pw', 'new pw')]);
+  assert.equal((await service.status()).unlocked, true);
+  await service.addEntry({ origin: SITE, env: 'local', username: 'ava', password: 'x' });
+  await service.lock();
+  assert.equal(await service.unlock('new pw'), true);
+});
+
+test('import rejects entries with bad field types or a non-origin site', async () => {
+  const { service, local } = await ready();
+  const before = JSON.stringify(local.dump());
+  const entry = { id: 'x', origin: SITE, env: 'local', username: 'a', password: 'p', note: '', createdAt: 'a', updatedAt: 'a', lastUsedAt: 'a' };
+  const bad = [
+    { ...entry, lastUsedAt: 5 },
+    { ...entry, note: { x: 1 } },
+    { ...entry, origin: 'not a url' },
+    { ...entry, origin: SITE + '/hr/login' },
+  ];
+  for (const e of bad) {
+    await assert.rejects(service.importVault({ version: 1, entries: [e], neverSave: [], envLabels: {} }), DLV.exportFile.InvalidFileError, JSON.stringify(e));
+  }
+  await assert.rejects(service.importVault({ version: 1, entries: [], neverSave: ['nope'], envLabels: {} }), DLV.exportFile.InvalidFileError);
+  await assert.rejects(service.importVault({ version: 1, entries: [], neverSave: [], envLabels: { 'bad': { local: 'x' } } }), DLV.exportFile.InvalidFileError);
+  await assert.rejects(service.importVault({ version: 1, entries: [], neverSave: [], envLabels: { [SITE]: { local: 7 } } }), DLV.exportFile.InvalidFileError);
+  assert.equal(JSON.stringify(local.dump()), before);
+});
+
+test('signing in with an already saved login moves it to the top', async () => {
+  const { service, clock } = await ready();
+  await service.addEntry({ origin: SITE, env: 'local', username: 'a', password: 'pa' });
+  clock.t += 1_000;
+  await service.addEntry({ origin: SITE, env: 'local', username: 'b', password: 'pb' });
+  assert.deepEqual((await service.listForSite(SITE, 'local')).current.map((e) => e.username), ['b', 'a']);
+  clock.t += 60_000;
+  await service.setTabEnv(7, SITE, '127.0.0.1');
+  await service.putPending(7, { origin: SITE, username: 'a', password: 'pa' });
+  assert.equal(await service.getPending(7), null);
+  assert.deepEqual((await service.listForSite(SITE, 'local')).current.map((e) => e.username), ['a', 'b']);
+});
+
+test('with an unknown environment an already saved login is not offered again', async () => {
+  const { service } = await ready();
+  await service.addEntry({ origin: SITE, env: 'remote', username: 'srv', password: 'p' });
+  await service.putPending(7, { origin: SITE, username: 'srv', password: 'p' });
+  assert.equal(await service.getPending(7), null);
+  await service.putPending(7, { origin: SITE, username: 'srv', password: 'changed' });
+  assert.equal((await service.getPending(7)).kind, 'save');
+});

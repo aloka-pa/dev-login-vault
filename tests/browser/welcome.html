@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Fixture: signed in</title></head>
+<body style="font:14px system-ui;margin:40px">
+  <h1>Signed in</h1>
+  <p id="who"></p>
+  <p><a href="login-single.html">Back to login</a></p>
+  <script>document.getElementById('who').textContent = 'User: ' + (new URLSearchParams(location.search).get('u') || '');</script>
+</body>
+</html>

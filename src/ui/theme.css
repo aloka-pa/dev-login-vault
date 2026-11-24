@@ -1,0 +1,150 @@
+/* Dev Login Vault – dark theme. Accents come from the padlock icon: orange #FEA832, navy #2F5274, green #70DA40. */
+:root {
+  color-scheme: dark;
+  --dlv-orange: #FEA832;
+  --dlv-orange-strong: #FFB547;
+  --dlv-orange-soft: rgba(254, 168, 50, 0.14);
+  --dlv-navy: #2F5274;
+  --dlv-navy-light: #8DB4DE;
+  --dlv-navy-soft: rgba(84, 132, 182, 0.18);
+  --dlv-green: #70DA40;
+  --dlv-green-soft: rgba(112, 218, 64, 0.14);
+  --dlv-error: #FF6B6B;
+  --dlv-error-soft: rgba(255, 107, 107, 0.14);
+
+  --dlv-bg: #0E131A;
+  --dlv-surface: #151C25;
+  --dlv-surface-2: #1B2430;
+  --dlv-surface-3: #222D3B;
+  --dlv-border: #263243;
+  --dlv-border-strong: #344358;
+  --dlv-text: #E8EDF3;
+  --dlv-text-2: #A5B1C0;
+  --dlv-text-3: #6F7D8F;
+
+  --dlv-radius: 10px;
+  --dlv-radius-lg: 14px;
+  --dlv-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --dlv-font: "Segoe UI Variable Text", "Segoe UI", Inter, system-ui, -apple-system, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--dlv-bg);
+  color: var(--dlv-text);
+  font: 13.5px/1.45 var(--dlv-font);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection { background: var(--dlv-orange); color: #111; }
+
+/* Header */
+.dlv-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: linear-gradient(135deg, #1A2B3E 0%, #121A24 70%);
+  border-bottom: 1px solid var(--dlv-border);
+}
+.dlv-header img { width: 28px; height: 28px; filter: drop-shadow(0 2px 6px rgba(254, 168, 50, 0.25)); }
+.dlv-header h1 { margin: 0; font-size: 15px; font-weight: 650; letter-spacing: 0.1px; flex: 1; }
+.dlv-header h1 small { display: block; font-size: 11px; font-weight: 500; color: var(--dlv-text-3); letter-spacing: 0.2px; }
+
+/* Buttons */
+.dlv-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 14px;
+  border: 1px solid var(--dlv-border-strong);
+  border-radius: var(--dlv-radius);
+  background: var(--dlv-surface-2);
+  color: var(--dlv-text);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.05s;
+}
+.dlv-btn:hover:not(:disabled) { background: var(--dlv-surface-3); border-color: #45566E; }
+.dlv-btn:active:not(:disabled) { transform: translateY(1px); }
+.dlv-btn.primary { background: var(--dlv-orange); border-color: var(--dlv-orange); color: #17120A; }
+.dlv-btn.primary:hover:not(:disabled) { background: var(--dlv-orange-strong); border-color: var(--dlv-orange-strong); }
+.dlv-btn.ghost { background: transparent; border-color: transparent; color: var(--dlv-text-2); }
+.dlv-btn.ghost:hover:not(:disabled) { background: var(--dlv-surface-2); color: var(--dlv-text); }
+.dlv-btn.danger { background: var(--dlv-error-soft); border-color: rgba(255, 107, 107, 0.45); color: #FFB3B3; }
+.dlv-btn.danger:hover:not(:disabled) { background: rgba(255, 107, 107, 0.25); }
+.dlv-btn.small { padding: 4px 10px; font-size: 12px; border-radius: 8px; }
+.dlv-btn.block { width: 100%; }
+.dlv-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.dlv-btn svg { width: 15px; height: 15px; }
+
+:focus-visible { outline: 2px solid var(--dlv-orange); outline-offset: 2px; }
+
+/* Cards */
+.dlv-card {
+  background: var(--dlv-surface);
+  border: 1px solid var(--dlv-border);
+  border-radius: var(--dlv-radius-lg);
+  padding: 16px;
+}
+.dlv-card h2 { margin: 0 0 4px; font-size: 14px; font-weight: 650; }
+.dlv-card > p:first-of-type { margin-top: 0; }
+
+/* Form fields */
+input[type="text"], input[type="password"], input[type="number"], input[type="search"], input[type="email"], select, textarea {
+  font: inherit;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--dlv-border-strong);
+  border-radius: var(--dlv-radius);
+  background: var(--dlv-bg);
+  color: var(--dlv-text);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+input::placeholder { color: var(--dlv-text-3); }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--dlv-orange); box-shadow: 0 0 0 3px var(--dlv-orange-soft); }
+input[type="file"] { font: inherit; color: var(--dlv-text-2); }
+input[type="file"]::file-selector-button {
+  font: inherit; font-weight: 600; margin-right: 10px; padding: 6px 12px; cursor: pointer;
+  border: 1px solid var(--dlv-border-strong); border-radius: 8px; background: var(--dlv-surface-2); color: var(--dlv-text);
+}
+input[type="checkbox"] { accent-color: var(--dlv-orange); }
+
+label { display: block; font-size: 12px; font-weight: 600; color: var(--dlv-text-2); margin: 12px 0 6px; }
+
+/* Badges */
+.dlv-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 650;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+.dlv-badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.dlv-badge.local { background: var(--dlv-orange-soft); color: var(--dlv-orange); border-color: rgba(254, 168, 50, 0.35); }
+.dlv-badge.remote { background: var(--dlv-navy-soft); color: var(--dlv-navy-light); border-color: rgba(141, 180, 222, 0.35); }
+.dlv-badge.unknown { background: rgba(165, 177, 192, 0.12); color: var(--dlv-text-2); border-color: var(--dlv-border-strong); }
+
+/* Messages */
+.dlv-msg { margin: 10px 0 0; padding: 8px 10px; border-radius: var(--dlv-radius); font-size: 12.5px; font-weight: 600; }
+.dlv-msg:empty { display: none; }
+.dlv-msg.ok { background: var(--dlv-green-soft); color: #A6EE85; }
+.dlv-msg.err { background: var(--dlv-error-soft); color: #FFB3B3; }
+.dlv-msg:not(.ok):not(.err) { background: var(--dlv-surface-2); color: var(--dlv-text-2); }
+.dlv-hint { color: var(--dlv-text-3); font-size: 12px; margin: 6px 0 0; }
+
+[hidden] { display: none !important; }
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--dlv-surface-3); border-radius: 10px; border: 2px solid var(--dlv-bg); }
+::-webkit-scrollbar-track { background: transparent; }

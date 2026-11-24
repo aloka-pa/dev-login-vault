@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "Dev Login Vault",
+  "version": "1.0.0",
+  "description": "Saves and fills logins for your local, dev and QA sites. Tells the local IIS copy of a site from the server copy.",
+  "permissions": ["storage", "webRequest", "scripting", "idle"],
+  "host_permissions": ["<all_urls>"],
+  "background": { "service_worker": "src/background/worker.js" },
+  "action": {
+    "default_title": "Dev Login Vault",
+    "default_popup": "src/popup/popup.html",
+    "default_icon": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png", "128": "icons/icon128.png" }
+  },
+  "options_page": "src/options/options.html",
+  "icons": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png", "128": "icons/icon128.png" },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "all_frames": true,
+      "run_at": "document_idle",
+      "js": ["src/lib/ns.js", "src/lib/forms.js", "src/content/content.js"]
+    }
+  ]
+}

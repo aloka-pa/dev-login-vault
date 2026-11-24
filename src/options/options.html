@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Dev Login Vault – settings</title>
+  <link rel="stylesheet" href="../ui/theme.css">
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <header class="dlv-header">
+    <img src="../../icons/icon128.png" alt="">
+    <h1>Dev Login Vault<small>Settings, export and import</small></h1>
+    <button type="button" class="dlv-btn small ghost" id="lockBtn" hidden>Lock</button>
+  </header>
+
+  <main>
+    <section id="setupNote" class="dlv-card" hidden>
+      <p>No vault yet. Click the padlock in the toolbar to set a master password, then come back here.</p>
+      <p>You can also import an export file after setting it up.</p>
+    </section>
+
+    <section id="unlockCard" class="dlv-card unlock-card" hidden>
+      <h2>Unlock</h2>
+      <form id="unlockForm">
+        <label for="unlockPw">Master password</label>
+        <input type="password" id="unlockPw" autocomplete="current-password" required>
+        <p class="dlv-msg err" id="unlockMsg" role="alert" hidden></p>
+        <p><button type="submit" class="dlv-btn primary">Unlock</button></p>
+      </form>
+    </section>
+
+    <div id="settings" hidden>
+      <section class="dlv-card">
+        <h2>Lock and security</h2>
+        <form id="lockForm" class="inline">
+          <label for="lockMinutes">Lock after this many minutes without keyboard or mouse use (5–240)</label>
+          <div class="row">
+            <input type="number" id="lockMinutes" min="5" max="240" step="1" required>
+            <button type="submit" class="dlv-btn primary">Save</button>
+          </div>
+          <p class="dlv-hint">The vault also locks when Windows locks and when you close the last browser window.</p>
+          <p class="dlv-msg" id="lockMsg" role="status" hidden></p>
+        </form>
+
+        <form id="pwForm">
+          <h3>Change master password</h3>
+          <label for="oldPw">Current master password</label>
+          <input type="password" id="oldPw" autocomplete="current-password" required>
+          <label for="newPw">New master password (at least 8 characters)</label>
+          <input type="password" id="newPw" autocomplete="new-password" required minlength="8">
+          <label for="newPw2">Repeat the new password</label>
+          <input type="password" id="newPw2" autocomplete="new-password" required>
+          <p class="dlv-msg" id="pwMsg" role="status" hidden></p>
+          <p><button type="submit" class="dlv-btn primary">Change password</button></p>
+        </form>
+      </section>
+
+      <section class="dlv-card">
+        <h2>Filling</h2>
+        <label class="check"><input type="checkbox" id="submitAfterFill"> Submit the form after filling</label>
+        <p class="dlv-msg" id="fillMsg" role="status" hidden></p>
+      </section>
+
+      <section class="dlv-card">
+        <h2>Environment names</h2>
+        <p class="dlv-hint">Local = the page came from this computer (127.0.0.1, your hosts file). Server = any other address. Leave a box empty for the default name.</p>
+        <div id="labels"></div>
+        <p class="dlv-hint" id="labelsEmpty" hidden>No sites saved yet.</p>
+      </section>
+
+      <section class="dlv-card">
+        <h2>Never save on these sites</h2>
+        <ul id="neverList" class="plain"></ul>
+        <p class="dlv-hint" id="neverEmpty" hidden>None.</p>
+      </section>
+
+      <section class="dlv-card">
+        <h2>Export (to move logins to the other browser)</h2>
+        <form id="exportForm">
+          <label for="exportPw">Password for the export file (you can use your master password)</label>
+          <input type="password" id="exportPw" autocomplete="new-password" required minlength="8">
+          <label for="exportPw2">Repeat it</label>
+          <input type="password" id="exportPw2" autocomplete="new-password" required>
+          <p class="dlv-msg" id="exportMsg" role="status" hidden></p>
+          <p><button type="submit" class="dlv-btn primary" id="exportBtn">Download export file</button></p>
+        </form>
+      </section>
+
+      <section class="dlv-card">
+        <h2>Import</h2>
+        <form id="importForm">
+          <label for="importFile">Export file (.dlv.json)</label>
+          <input type="file" id="importFile" accept=".json,application/json" required>
+          <label for="importPw">Password of the export file</label>
+          <input type="password" id="importPw" autocomplete="off" required>
+          <p class="dlv-hint">Logins are merged: the newer copy of a login wins and nothing is deleted.</p>
+          <p class="dlv-msg" id="importMsg" role="status" hidden></p>
+          <p><button type="submit" class="dlv-btn primary" id="importBtn">Import</button></p>
+        </form>
+      </section>
+
+      <section class="dlv-card danger-zone">
+        <h2>Delete all data</h2>
+        <form id="deleteForm">
+          <label for="deleteConfirm">Type DELETE to remove every saved login and the master password from this browser</label>
+          <div class="row">
+            <input type="text" id="deleteConfirm" autocomplete="off" required>
+            <button type="submit" class="dlv-btn danger">Delete everything</button>
+          </div>
+          <p class="dlv-msg" id="deleteMsg" role="status" hidden></p>
+        </form>
+      </section>
+    </div>
+  </main>
+
+  <script src="../lib/ns.js"></script>
+  <script src="../lib/env.js"></script>
+  <script src="../lib/crypto.js"></script>
+  <script src="../lib/vault.js"></script>
+  <script src="../lib/exportFile.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

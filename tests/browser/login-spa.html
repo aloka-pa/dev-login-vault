@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Fixture: single-page app login</title></head>
+<body style="font:14px system-ui;margin:40px">
+  <h1>Fixture login (no navigation after sign-in)</h1>
+  <div id="app">
+    <div><label>User <input type="text" id="u"></label></div>
+    <div><label>Password <input type="password" id="p"></label></div>
+    <div role="button" id="go" tabindex="0" style="display:inline-block;padding:4px 10px;border:2px solid #000;cursor:pointer">Sign in</div>
+  </div>
+  <script>
+    document.getElementById('go').addEventListener('click', () => {
+      const user = document.getElementById('u').value;
+      setTimeout(() => { document.getElementById('app').textContent = 'Signed in as ' + user; }, 50);
+    });
+  </script>
+</body>
+</html>

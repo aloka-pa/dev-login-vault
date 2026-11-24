@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Extension page preview</title>
+  <style>body{font:14px system-ui;margin:16px;background:#ddd} iframe{border:1px solid #888;background:#fff}</style>
+</head>
+<body>
+  <p>Preview with test-only data. Query: <code>?page=popup|options&amp;state=list|empty|locked|new&amp;env=local|remote|unknown</code></p>
+  <iframe id="frame" title="extension page"></iframe>
+  <script>
+    // Loads the real popup.html or options.html with the simulated backend (tests/browser/ext-sim.js) injected before the page script.
+    (async () => {
+      const page = new URLSearchParams(location.search).get('page') === 'options' ? 'options' : 'popup';
+      const frame = document.getElementById('frame');
+      frame.style.width = page === 'popup' ? '374px' : '880px';
+      frame.style.height = page === 'popup' ? '560px' : '1500px';
+      const html = await (await fetch(`/src/${page}/${page}.html`, { cache: 'no-store' })).text();
+      const sim = ['/src/lib/ns.js', '/src/lib/env.js', '/src/lib/crypto.js', '/src/lib/vault.js', '/src/lib/exportFile.js',
+        '/src/lib/service.js', '/src/background/worker.js', '/tests/browser/ext-sim.js'].map((s) => `<script src="${s}"><\/script>`).join('');
+      const pageScript = `<script src="${page}.js"><` + '/script>';
+      frame.srcdoc = html.replace('<head>', `<head><base href="/src/${page}/">`).replace(pageScript, sim + pageScript);
+    })();
+  </script>
+</body>
+</html>

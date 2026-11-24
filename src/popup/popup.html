@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Dev Login Vault</title>
+  <link rel="stylesheet" href="../ui/theme.css">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header class="dlv-header">
+    <img src="../../icons/icon128.png" alt="">
+    <h1>Dev Login Vault<small id="headerSub">Your dev &amp; QA logins</small></h1>
+    <button type="button" class="icon-btn" id="optionsBtn" title="Settings, export and import" aria-label="Settings, export and import"></button>
+    <button type="button" class="icon-btn" id="lockBtn" title="Lock" aria-label="Lock the vault" hidden></button>
+  </header>
+
+  <main>
+    <!-- First run -->
+    <section id="setupView" class="dlv-card hero" hidden>
+      <h2>Create your vault</h2>
+      <p class="dlv-hint">Choose a master password. It protects every saved login and cannot be recovered, so keep an export file as a backup.</p>
+      <form id="setupForm">
+        <label for="setupPw">Master password</label>
+        <input type="password" id="setupPw" autocomplete="new-password" required minlength="8" placeholder="At least 8 characters">
+        <label for="setupPw2">Repeat it</label>
+        <input type="password" id="setupPw2" autocomplete="new-password" required>
+        <p class="dlv-msg err" id="setupMsg" role="alert" hidden></p>
+        <button type="submit" class="dlv-btn primary block spaced">Create vault</button>
+      </form>
+    </section>
+
+    <!-- Locked -->
+    <section id="lockedView" class="dlv-card hero" hidden>
+      <div class="lock-art" id="lockArt" aria-hidden="true"></div>
+      <h2>Vault locked</h2>
+      <form id="unlockForm">
+        <label for="unlockPw">Master password</label>
+        <input type="password" id="unlockPw" autocomplete="current-password" required>
+        <p class="dlv-msg err" id="unlockMsg" role="alert" hidden></p>
+        <button type="submit" class="dlv-btn primary block spaced" id="unlockBtn">Unlock</button>
+      </form>
+    </section>
+
+    <!-- Not a website -->
+    <section id="noSiteView" class="dlv-card empty" hidden>
+      <p id="noSiteText">Open a website to see its logins.</p>
+    </section>
+
+    <!-- Logins for this site -->
+    <section id="listView" hidden>
+      <div class="site">
+        <div class="site-text">
+          <span class="site-label">Current site</span>
+          <span class="host" id="siteHost"></span>
+        </div>
+        <span class="dlv-badge" id="envBadge"></span>
+      </div>
+      <p class="dlv-msg" id="envHint" hidden>Environment unknown. Reload the page to detect Local IIS or Server.</p>
+
+      <div class="search">
+        <span class="search-icon" id="searchIcon" aria-hidden="true"></span>
+        <input type="search" id="search" placeholder="Search usernames and notes" aria-label="Search usernames and notes">
+      </div>
+
+      <p class="dlv-msg" id="listMsg" role="status" hidden></p>
+      <ul class="logins" id="currentList" aria-label="Logins for this environment"></ul>
+      <div class="empty" id="emptyHint" hidden>
+        <p>No saved logins for this environment yet.</p>
+        <p class="dlv-hint">Sign in and click Save, or add one by hand.</p>
+      </div>
+
+      <details id="otherBlock" hidden>
+        <summary><span class="chev" id="otherChev" aria-hidden="true"></span><span id="otherTitle">Other environment</span></summary>
+        <ul class="logins" id="otherList"></ul>
+      </details>
+
+      <form id="entryForm" class="dlv-card" hidden>
+        <h2 id="entryTitle">Add a login</h2>
+        <label for="entryUser">Username</label>
+        <input type="text" id="entryUser" required autocomplete="off">
+        <label for="entryPw">Password</label>
+        <input type="password" id="entryPw" required autocomplete="new-password">
+        <label for="entryNote">Note (optional)</label>
+        <input type="text" id="entryNote" autocomplete="off" placeholder="e.g. QA admin">
+        <label for="entryEnv">Environment</label>
+        <select id="entryEnv"></select>
+        <p class="dlv-msg err" id="entryMsg" role="alert" hidden></p>
+        <div class="row">
+          <button type="submit" class="dlv-btn primary">Save</button>
+          <button type="button" class="dlv-btn ghost" id="entryCancel">Cancel</button>
+        </div>
+      </form>
+
+      <button type="button" class="dlv-btn block add" id="addBtn"></button>
+    </section>
+  </main>
+
+  <script src="../lib/ns.js"></script>
+  <script src="../ui/icons.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

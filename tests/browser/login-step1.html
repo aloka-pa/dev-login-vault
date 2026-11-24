@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Fixture: two-step login, step 1</title></head>
+<body style="font:14px system-ui;margin:40px">
+  <h1>Fixture login, step 1 of 2</h1>
+  <form id="f"><label>Email <input type="email" id="email" autocomplete="username"></label> <button type="submit">Next</button></form>
+  <script>
+    document.getElementById('f').addEventListener('submit', (e) => { e.preventDefault(); setTimeout(() => { location.href = 'login-step2.html'; }, 50); });
+  </script>
+</body>
+</html>

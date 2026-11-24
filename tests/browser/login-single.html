@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Fixture: single-step login</title>
+<style>body{font:14px system-ui;margin:40px} label{display:block;margin:8px 0}</style></head>
+<body>
+  <h1>Fixture login (single step)</h1>
+  <p>Test-only page. Any username and password are accepted.</p>
+  <form id="f" action="welcome.html">
+    <input type="hidden" name="__RequestVerificationToken" value="x">
+    <label>User name <input type="text" id="UserName" name="UserName"></label>
+    <label>Password <input type="password" id="Password" name="Password"></label>
+    <button type="submit" id="login">Login</button>
+  </form>
+  <script>
+    document.getElementById('f').addEventListener('submit', (e) => {
+      e.preventDefault();
+      setTimeout(() => { location.href = 'welcome.html?u=' + encodeURIComponent(document.getElementById('UserName').value); }, 50);
+    });
+  </script>
+</body>
+</html>

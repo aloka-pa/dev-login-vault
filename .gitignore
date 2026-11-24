@@ -1,0 +1,12 @@
+# Local working notes
+.superpowers/
+
+# Export files hold encrypted logins: never commit them
+*.dlv.json
+
+# Editors / OS
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+node_modules/

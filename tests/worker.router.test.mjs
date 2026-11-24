@@ -153,3 +153,10 @@ test('recovery messages work for extension pages only', async () => {
   assert.deepEqual(await route({ type: 'recoverWithKey', recoveryKey: created.data, newPassword: 'new pw' }, pageSender), { ok: true, data: true });
   assert.equal((await service.status()).unlocked, true);
 });
+
+test('bannerInfo answers only the top frame', async () => {
+  const { route, service } = await makeRouter();
+  await service.setTabEnv(7, SITE, '127.0.0.1');
+  assert.deepEqual(await route({ type: 'bannerInfo' }, tabSender()), { ok: true, data: { env: 'local', label: 'Local IIS' } });
+  assert.deepEqual(await route({ type: 'bannerInfo' }, tabSender(undefined, 3)), { ok: true, data: null });
+});

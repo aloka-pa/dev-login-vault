@@ -182,6 +182,7 @@
     badge.className = `dlv-badge ${known ? state.env : 'unknown'}`;
     badge.textContent = known ? labelOf(state.env) : 'Unknown';
     $('envHint').hidden = known || !envMatters;
+    $('switchUserBtn').hidden = !DLV.sites.signOutUrl(state.tab.url);
 
     const q = $('search').value.trim().toLowerCase();
     const match = (e) => !q || e.username.toLowerCase().includes(q) || (e.note || '').toLowerCase().includes(q);
@@ -263,6 +264,14 @@
   }
 
   $('search').addEventListener('input', () => state.list && render());
+
+  // Quick switch user: sign out of EHRM in this tab; EHRM returns to its sign-in page, then pick the next login here.
+  $('switchUserBtn').addEventListener('click', async () => {
+    const url = DLV.sites.signOutUrl(state.tab.url);
+    if (!url) return;
+    await chrome.tabs.update(state.tab.id, { url });
+    window.close();
+  });
 
   // ---- Add / edit ----
   function openForm(entry) {

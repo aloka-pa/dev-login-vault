@@ -5,7 +5,7 @@ const bar = () => C().lastBar && C().lastBar.host.isConnected ? C().lastBar.root
 const pending = (o = {}) => ({ ok: true, data: { origin: location.origin, env: 'local', username: 'ava', kind: 'save',
   labels: { local: 'Local IIS', remote: 'Server' }, ...o } });
 
-window.afterEachTest = () => { window.sent = []; window.stubReplies = {}; C().removeBar(); };
+window.afterEachTest = () => { window.sent = []; window.stubReplies = {}; C().removeBar(); if (C().removeBanner) C().removeBanner(); };
 
 const LOGIN = `<form id="f" action="javascript:void 0"><input type="text" id="u"><input type="password" id="p">
   <button type="submit" id="go">Login</button></form>`;
@@ -177,4 +177,32 @@ test('save card offers N/A and shows no environment for it', async () => {
   select.value = 'remote';
   select.dispatchEvent(new Event('change'));
   eq(bar().querySelector('.msg').textContent, `Save login "ava" for ${location.host} (Server)?`);
+});
+
+const banner = () => (C().lastBanner && C().lastBanner.host.isConnected ? C().lastBanner.root : null);
+
+test('environment banner shows the name and never blocks clicks', async () => {
+  stubReplies.bannerInfo = { ok: true, data: { env: 'local', label: 'Local IIS – philippinesdev' } };
+  await C().refreshBanner();
+  ok(banner(), 'no banner');
+  eq(banner().querySelector('.tag').textContent, 'Local IIS · philippinesdev');
+  ok(banner().querySelector('.strip').classList.contains('local'), 'local colour');
+  eq(getComputedStyle(banner().querySelector('.wrap')).pointerEvents, 'none');
+  stubReplies.bannerInfo = { ok: true, data: { env: 'remote', label: 'Server' } };
+  await C().refreshBanner();
+  ok(banner().querySelector('.strip').classList.contains('remote'), 'remote colour');
+  stubReplies.bannerInfo = { ok: true, data: null };
+  await C().refreshBanner();
+  eq(banner(), null);
+});
+
+test('no environment banner inside iframes', async (s) => {
+  const frame = document.createElement('iframe');
+  frame.src = 'content-frame.html';
+  s.appendChild(frame);
+  await new Promise((r) => frame.addEventListener('load', r));
+  const w = frame.contentWindow;
+  w.stubReplies.bannerInfo = { ok: true, data: { env: 'local', label: 'Local IIS' } };
+  await w.DLV.content.refreshBanner();
+  eq(w.DLV.content.lastBanner, null);
 });

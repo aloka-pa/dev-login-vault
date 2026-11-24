@@ -85,10 +85,9 @@
         <button type="button" class="dlv-btn small primary" id="recoveryCreate">Create</button>
       </div>
       <div class="site">
-        <div class="site-text">
-          <span class="site-label">Current site</span>
-          <span class="host" id="siteHost"></span>
-        </div>
+        <span class="site-label">Current site</span>
+        <button type="button" class="switch-user" id="switchUserBtn" hidden title="Sign out of EHRM so you can sign in as someone else">Switch user</button>
+        <span class="host" id="siteHost"></span>
         <span class="dlv-badge" id="envBadge"></span>
       </div>
       <p class="dlv-msg" id="envHint" hidden>Environment unknown. Reload the page to detect Local IIS or Server.</p>
@@ -133,6 +132,7 @@
 
   <script src="../lib/ns.js"></script>
   <script src="../ui/icons.js"></script>
+  <script src="../lib/sites.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

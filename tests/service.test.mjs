@@ -497,3 +497,44 @@ test('an upgraded vault without a recovery key cannot be recovered', async () =>
   assert.equal(await service.recoverWithKey(DLV.crypto.newRecoveryKey(), 'new pw'), false);
   assert.equal(await service.unlock('master pw'), true);
 });
+
+// ---- Environment banner ----
+
+test('banner shows the environment name on sites where hosting matters', async () => {
+  const { service } = await ready();
+  await service.addEntry({ origin: SITE, env: 'local', username: 'ava', password: 'x' });
+  await service.setLabel(SITE, 'local', 'Local IIS – philippinesdev');
+  await service.setLabel(SITE, 'remote', 'Server – hrmmain_philippines (read-only)');
+  await service.setTabEnv(7, SITE, '127.0.0.1');
+  assert.deepEqual(await service.bannerInfo(7, SITE), { env: 'local', label: 'Local IIS – philippinesdev' });
+  await service.setTabEnv(7, SITE, '52.1.2.3');
+  assert.deepEqual(await service.bannerInfo(7, SITE), { env: 'remote', label: 'Server – hrmmain_philippines (read-only)' });
+  await service.setTabEnv(7, SITE, null);
+  assert.deepEqual(await service.bannerInfo(7, SITE), { env: 'unknown', label: 'Environment unknown – reload the page' });
+});
+
+test('no banner on ordinary sites', async () => {
+  const { service } = await ready();
+  const WEB = 'https://login.microsoftonline.com';
+  await service.addEntry({ origin: WEB, env: 'na', username: 'a', password: 'x' });
+  await service.setTabEnv(7, WEB, '20.190.1.1');
+  assert.equal(await service.bannerInfo(7, WEB), null);
+});
+
+test('while locked the banner only shows pages served from this computer, with the default name', async () => {
+  const { service } = await ready();
+  await service.addEntry({ origin: SITE, env: 'local', username: 'ava', password: 'x' });
+  await service.setLabel(SITE, 'local', 'Local IIS – philippinesdev');
+  await service.lock();
+  await service.setTabEnv(7, SITE, '127.0.0.1');
+  assert.deepEqual(await service.bannerInfo(7, SITE), { env: 'local', label: 'Local IIS' });
+  await service.setTabEnv(7, SITE, '52.1.2.3');
+  assert.equal(await service.bannerInfo(7, SITE), null);
+});
+
+test('the banner can be turned off', async () => {
+  const { service } = await ready();
+  await service.setSettings({ showBanner: false });
+  await service.setTabEnv(7, SITE, '127.0.0.1');
+  assert.equal(await service.bannerInfo(7, SITE), null);
+});

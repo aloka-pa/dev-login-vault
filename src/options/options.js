@@ -39,6 +39,7 @@
     await renderRecovery();
     $('lockMinutes').value = settings.data.autoLockMinutes;
     $('submitAfterFill').checked = !!settings.data.submitAfterFill;
+    $('showBanner').checked = settings.data.showBanner !== false;
     renderLabels(overview.data);
     renderNever(overview.data.neverSave);
   }
@@ -154,6 +155,12 @@
     const r = await send({ type: 'setSettings', settings: { submitAfterFill: $('submitAfterFill').checked } });
     if (lockedReply(r)) return start();
     say('fillMsg', r.ok ? 'Saved.' : 'Could not save.', r.ok ? 'ok' : 'err');
+  });
+
+  $('showBanner').addEventListener('change', async () => {
+    const r = await send({ type: 'setSettings', settings: { showBanner: $('showBanner').checked } });
+    if (lockedReply(r)) return start();
+    say('fillMsg', r.ok ? 'Saved. Open pages update when they are reloaded.' : 'Could not save.', r.ok ? 'ok' : 'err');
   });
 
   $('exportForm').addEventListener('submit', async (event) => {

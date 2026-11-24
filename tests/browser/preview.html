@@ -17,7 +17,7 @@
       frame.style.height = page === 'popup' ? '560px' : '1500px';
       const html = await (await fetch(`/src/${page}/${page}.html`, { cache: 'no-store' })).text();
       const sim = ['/src/lib/ns.js', '/src/lib/env.js', '/src/lib/crypto.js', '/src/lib/vault.js', '/src/lib/exportFile.js',
-        '/src/lib/service.js', '/src/background/worker.js', '/tests/browser/ext-sim.js'].map((s) => `<script src="${s}"><\/script>`).join('');
+        '/src/lib/service.js', '/src/lib/sites.js', '/src/background/worker.js', '/tests/browser/ext-sim.js'].map((s) => `<script src="${s}"><\/script>`).join('');
       const pageScript = `<script src="${page}.js"><` + '/script>';
       frame.srcdoc = html.replace('<head>', `<head><base href="/src/${page}/">`).replace(pageScript, sim + pageScript);
     })();

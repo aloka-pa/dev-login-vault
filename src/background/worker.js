@@ -6,7 +6,7 @@ if (typeof importScripts === 'function') {
 (function (DLV) {
   // Messages a content script (a web page's frame) may send. Everything else is for extension pages only.
   const CONTENT_TYPES = new Set(['pendingCapture', 'pendingStep1', 'pendingNudge', 'pendingForTab', 'savePending',
-    'dismissPending', 'neverForPending', 'pageShown']);
+    'dismissPending', 'neverForPending', 'pageShown', 'bannerInfo']);
 
   const ERROR_CODES = {
     LockedError: 'LOCKED', OriginMismatchError: 'ORIGIN_MISMATCH', EnvRequiredError: 'ENV_REQUIRED',
@@ -32,6 +32,7 @@ if (typeof importScripts === 'function') {
     /** Waiting logins captured while locked: clear their "!" and show their save card now. */
     async function afterUnlock() {
       for (const tabId of await pendingTabIds()) { await deps.setBadge(tabId, ''); await deps.nudgeTopFrame(tabId); }
+      if (deps.refreshBanners) await deps.refreshBanners();
     }
 
     const content = {
@@ -42,6 +43,7 @@ if (typeof importScripts === 'function') {
       pendingStep1: (m, tabId, origin) => service.rememberStep1User(tabId, origin, m.username),
       pendingNudge: (m, tabId) => deps.nudgeTopFrame(tabId),
       pendingForTab: (m, tabId, origin, frameId) => (frameId === 0 ? service.getPending(tabId) : null),
+      bannerInfo: (m, tabId, origin, frameId) => (frameId === 0 ? service.bannerInfo(tabId, origin) : null),
       async savePending(m, tabId, origin, frameId) {
         if (frameId !== 0) throw forbidden();
         const r = await service.savePending(tabId, m.env);
@@ -80,6 +82,7 @@ if (typeof importScripts === 'function') {
         const tabs = await pendingTabIds();
         await service.lock();
         for (const tabId of tabs) await deps.setBadge(tabId, '');
+        if (deps.refreshBanners) await deps.refreshBanners();
       },
       tabEnv: (m) => service.getTabEnv(m.tabId, m.origin),
       listForSite: (m) => service.listForSite(m.origin, m.env),
@@ -210,6 +213,11 @@ if (typeof importScripts === 'function') {
       try { await chrome.tabs.sendMessage(tabId, { type: 'checkPending' }, { frameId: 0 }); } catch { /* no content script there */ }
     },
     applyIdle,
+    async refreshBanners() {
+      for (const tab of await chrome.tabs.query({})) {
+        chrome.tabs.sendMessage(tab.id, { type: 'refreshBanner' }, { frameId: 0 }).catch(() => {});
+      }
+    },
     extensionOrigin: new URL(chrome.runtime.getURL('')).origin,
   };
 

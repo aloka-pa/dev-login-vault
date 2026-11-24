@@ -73,6 +73,19 @@ So with `127.0.0.1 hrmmainphdev01.phrsandbox.dev` switched on in `C:\Windows\Sys
 - If your browser uses a proxy, the address seen is the proxy's. Local (`127.0.0.1`) sites normally bypass the proxy.
 - Rename the environments per site in **Settings** (e.g. "Local IIS – philippinesdev").
 
+### Environment banner
+
+On sites where Local/Server matters, a thin coloured strip with a small name tab sits at the top of every page:
+orange for **Local IIS**, navy for **Server**, grey when the environment is unknown. It never blocks clicks. Give the names
+your database, e.g. "Local IIS – philippinesdev" and "Server – hrmmain_philippines (read-only)", in Settings →
+Environment names, and the tab shows them as "Local IIS · philippinesdev". While the vault is locked, only pages served
+from this computer show the strip (with the default name). Turn it off in Settings → Filling.
+
+### Switch user (EHRM)
+
+On EHRM pages the popup shows **Switch user**. It signs you out (`<app>/security/logoff`, e.g. `/hr/security/logoff`);
+EHRM returns to its sign-in page, where you open the padlock and click the next user.
+
 ### N/A: sites where hosting does not matter
 
 For ordinary websites (Microsoft sign-in, Azure DevOps, …) choose **N/A (not environment-specific)** when saving or adding

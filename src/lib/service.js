@@ -283,6 +283,18 @@
       await this.dismissPending(tabId);
     }
 
+    /**
+     * The environment strip for a page: { env, label } or null. Shown where hosting matters; while locked only for pages
+     * served from this computer (names are inside the encrypted vault), with the default name.
+     */
+    async bannerInfo(tabId, origin) {
+      const env = await this.getTabEnv(tabId, origin);
+      if (!(await this.isUnlocked())) return env === 'local' ? { env, label: DLV.env.DEFAULT_LABELS.local } : null;
+      const vault = await this.getVault();
+      if (vault.settings.showBanner === false || !envMatters(vault, origin, env)) return null;
+      return { env, label: ENVS.includes(env) ? V().labelFor(vault, origin, env) : 'Environment unknown – reload the page' };
+    }
+
     async listForSite(origin, env) {
       const vault = await this.getVault();
       const strip = ({ id, username, env: e, note, lastUsedAt }) => ({ id, username, env: e, note, lastUsedAt });

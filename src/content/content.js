@@ -181,20 +181,65 @@
   }
 
   // ---- Page lifecycle ----
-  chrome.runtime.onMessage.addListener((m) => { if (m && m.type === 'checkPending') checkPending(); });
+  chrome.runtime.onMessage.addListener((m) => {
+    if (m && m.type === 'checkPending') { checkPending(); refreshBanner(); }
+    if (m && m.type === 'refreshBanner') refreshBanner();
+  });
+
+  // ---- Environment banner (top frame only): a thin strip and a small name tab; never blocks clicks ----
+  let lastBanner = null;
+
+  const BANNER_STYLE = `
+    :host { all: initial; }
+    .wrap { position: fixed; top: 0; left: 0; right: 0; z-index: 2147483646; pointer-events: none;
+      font: 600 11px/1.2 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; }
+    .strip { height: 3px; }
+    .tag { position: absolute; top: 3px; left: 50%; transform: translateX(-50%); padding: 3px 12px 4px; white-space: nowrap;
+      border-radius: 0 0 8px 8px; letter-spacing: 0.3px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25); opacity: 0.94; }
+    .local, .local + .tag { background: #FEA832; color: #17120A; }
+    .remote, .remote + .tag { background: #2F5274; color: #FFFFFF; }
+    .unknown, .unknown + .tag { background: #5B6675; color: #FFFFFF; }`;
+
+  function removeBanner() {
+    if (lastBanner) lastBanner.host.remove();
+    lastBanner = null;
+    api.lastBanner = null;
+  }
+
+  function showBanner(info) {
+    removeBanner();
+    const host = el('div');
+    const root = host.attachShadow({ mode: 'closed' });
+    root.appendChild(el('style', {}, BANNER_STYLE));
+    const wrap = el('div', { class: 'wrap', ariaHidden: 'true' });
+    const kind = info.env === 'local' || info.env === 'remote' ? info.env : 'unknown';
+    wrap.append(el('div', { class: `strip ${kind}` }), el('div', { class: 'tag' }, String(info.label).replace(/\s+[–-]\s+/g, ' · ')));
+    root.appendChild(wrap);
+    (document.body || document.documentElement).appendChild(host);
+    lastBanner = { host, root };
+    api.lastBanner = lastBanner;
+  }
+
+  async function refreshBanner() {
+    if (!isTop) return;
+    const reply = await send({ type: 'bannerInfo' });
+    if (reply && reply.ok && reply.data) showBanner(reply.data); else removeBanner();
+  }
+
+  const onPageReady = () => { checkPending(); refreshBanner(); };
 
   if (isTop) {
     window.addEventListener('pageshow', (event) => {
       const nav = performance.getEntriesByType('navigation')[0];
       const backForward = event.persisted || (nav && nav.type === 'back_forward');
-      send({ type: 'pageShown', backForward: !!backForward }).then(checkPending);
+      send({ type: 'pageShown', backForward: !!backForward }).then(onPageReady);
     });
     if (document.readyState === 'complete') {
       const nav = performance.getEntriesByType('navigation')[0];
-      send({ type: 'pageShown', backForward: !!(nav && nav.type === 'back_forward') }).then(checkPending);
+      send({ type: 'pageShown', backForward: !!(nav && nav.type === 'back_forward') }).then(onPageReady);
     }
   }
 
-  const api = { capture, checkPending, showBar, removeBar, lastBar: null };
+  const api = { capture, checkPending, showBar, removeBar, lastBar: null, refreshBanner, showBanner, removeBanner, lastBanner: null };
   DLV.content = api;
 })(globalThis.DLV);

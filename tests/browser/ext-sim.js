@@ -55,7 +55,7 @@
       openOptionsPage: () => log.push('openOptionsPage'),
       onMessage: { addListener() {} },
     },
-    tabs: { query: async () => [TAB] },
+    tabs: { query: async () => [TAB], update: async (id, props) => { log.push(`tab ${id} -> ${props.url}`); } },
   };
   window.close = () => log.push('popup closed');
 })();

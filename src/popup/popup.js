@@ -102,28 +102,30 @@
   const labelOf = (env) => state.list.labels[env] || env;
 
   function render() {
-    const { current, other } = state.list;
+    const { current, other, envMatters } = state.list;
     const known = ENVS.includes(state.env);
     $('siteHost').textContent = new URL(state.origin).host;
     $('siteHost').title = state.origin;
+    // The Local/Server chip only shows on sites where hosting matters (served from this computer, or with Local/Server logins).
     const badge = $('envBadge');
+    badge.hidden = !envMatters;
     badge.className = `dlv-badge ${known ? state.env : 'unknown'}`;
     badge.textContent = known ? labelOf(state.env) : 'Unknown';
-    $('envHint').hidden = known;
+    $('envHint').hidden = known || !envMatters;
 
     const q = $('search').value.trim().toLowerCase();
     const match = (e) => !q || e.username.toLowerCase().includes(q) || (e.note || '').toLowerCase().includes(q);
 
     const cur = current.filter(match);
     $('currentList').replaceChildren(...cur.map((e) => row(e, false)));
-    $('currentList').hidden = !known || cur.length === 0;
-    $('emptyHint').hidden = !known || cur.length > 0 || !!q;
+    $('currentList').hidden = cur.length === 0;
+    $('emptyHint').hidden = cur.length > 0 || !!q || (!known && envMatters);
 
     const oth = other.filter(match);
     $('otherBlock').hidden = oth.length === 0;
     $('otherTitle').textContent = known
       ? `${labelOf(state.env === 'local' ? 'remote' : 'local')} logins (${oth.length})`
-      : `All logins for this site (${oth.length})`;
+      : `Local and Server logins (${oth.length})`;
     if (!known || q) $('otherBlock').open = true;
     $('otherList').replaceChildren(...oth.map((e) => row(e, true)));
   }
@@ -134,7 +136,7 @@
     fill.append(el('span', { class: `avatar ${entry.env}` }, (entry.username || '?').slice(0, 1)));
     const who = el('span', { class: 'who' });
     who.append(el('span', { class: 'user' }, entry.username || '(no username)'));
-    const noteText = [showEnv ? labelOf(entry.env) : '', entry.note].filter(Boolean).join(' · ');
+    const noteText = [showEnv && entry.env !== 'na' ? labelOf(entry.env) : '', entry.note].filter(Boolean).join(' · ');
     if (noteText) who.append(el('span', { class: 'note' }, noteText));
     const secret = el('span', { class: 'secret', hidden: true });
     who.append(secret);
@@ -201,8 +203,9 @@
     $('entryPw').required = !entry;
     $('entryPw').placeholder = entry ? 'Leave empty to keep the current password' : '';
     $('entryNote').value = entry ? entry.note || '' : '';
-    $('entryEnv').replaceChildren(...ENVS.map((env) => el('option', { value: env }, labelOf(env))));
-    $('entryEnv').value = entry ? entry.env : ENVS.includes(state.env) ? state.env : 'local';
+    $('entryEnv').replaceChildren(...[...ENVS, 'na'].map((env) =>
+      el('option', { value: env }, env === 'na' ? `${labelOf('na')} (not environment-specific)` : labelOf(env))));
+    $('entryEnv').value = entry ? entry.env : !state.list.envMatters ? 'na' : ENVS.includes(state.env) ? state.env : 'local';
     say('entryMsg', '');
     $('entryForm').hidden = false;
     $('addBtn').hidden = true;

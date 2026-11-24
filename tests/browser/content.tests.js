@@ -165,3 +165,16 @@ test("step-1 username is read from the clicked button's form", async (s) => {
   await wait(0);
   eq([...new Set(sent.filter((m) => m.type === 'pendingStep1').map((m) => m.username))], ['ava@qa.test']);
 });
+
+test('save card offers N/A and shows no environment for it', async () => {
+  stubReplies.pendingForTab = pending({ env: 'na', labels: { local: 'Local IIS', remote: 'Server', na: 'N/A' } });
+  await C().checkPending();
+  const select = bar().querySelector('select');
+  eq([...select.options].map((o) => o.value), ['local', 'remote', 'na']);
+  eq(select.value, 'na');
+  ok(!bar().querySelector('[data-action="save"]').disabled, 'save should be enabled');
+  eq(bar().querySelector('.msg').textContent, `Save login "ava" for ${location.host}?`);
+  select.value = 'remote';
+  select.dispatchEvent(new Event('change'));
+  eq(bar().querySelector('.msg').textContent, `Save login "ava" for ${location.host} (Server)?`);
+});

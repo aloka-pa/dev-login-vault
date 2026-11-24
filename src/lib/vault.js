@@ -12,19 +12,30 @@
   const byLastUsedDesc = (a, b) => (b.lastUsedAt || '').localeCompare(a.lastUsedAt || '');
   const withEntries = (vault, entries) => ({ ...vault, entries });
 
+  /** current = logins for the detected environment plus N/A logins; other = the other hosting environment. */
   function findForSite(vault, origin, env) {
     const site = vault.entries.filter((e) => e.origin === origin);
-    if (!ENVS.includes(env)) return { current: [], other: [...site].sort(byLastUsedDesc) };
+    const na = site.filter((e) => e.env === 'na');
+    const hosted = site.filter((e) => e.env !== 'na');
+    if (!ENVS.includes(env)) return { current: na.sort(byLastUsedDesc), other: hosted.sort(byLastUsedDesc) };
     return {
-      current: site.filter((e) => e.env === env).sort(byLastUsedDesc),
-      other: site.filter((e) => e.env !== env).sort(byLastUsedDesc),
+      current: [...na, ...hosted.filter((e) => e.env === env)].sort(byLastUsedDesc),
+      other: hosted.filter((e) => e.env !== env).sort(byLastUsedDesc),
     };
+  }
+
+  /** The saved login a sign-in belongs to: same environment, or an N/A login with the same username. */
+  function findMatch(vault, { origin, env, username }) {
+    const name = cleanName(username);
+    return vault.entries.find((e) => sameKey(e, origin, env, name))
+      || vault.entries.find((e) => sameKey(e, origin, 'na', name))
+      || null;
   }
 
   /** @returns {"save"|"update"|"none"|"never"} */
   function classifyPending(vault, { origin, env, username, password }) {
     if (vault.neverSave.includes(origin)) return 'never';
-    const match = vault.entries.find((e) => sameKey(e, origin, env, cleanName(username)));
+    const match = findMatch(vault, { origin, env, username });
     if (!match) return 'save';
     return match.password === password ? 'none' : 'update';
   }
@@ -95,7 +106,7 @@
   }
 
   DLV.vault = {
-    emptyVault, findForSite, classifyPending, upsertLogin, updateEntry, removeEntry, markUsed,
+    emptyVault, findForSite, findMatch, classifyPending, upsertLogin, updateEntry, removeEntry, markUsed,
     addNeverSave, removeNeverSave, labelFor, setLabel, mergeVaults,
   };
 })(globalThis.DLV);

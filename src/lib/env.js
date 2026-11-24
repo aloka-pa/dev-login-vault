@@ -1,6 +1,8 @@
 // Tells which copy of a site a page came from: the browser's own machine (local IIS) or another server.
 (function (DLV) {
-  const DEFAULT_LABELS = Object.freeze({ local: 'Local IIS', remote: 'Server' });
+  // "na": a login for a site where local/server hosting does not matter; it is offered whatever the page's IP is.
+  const DEFAULT_LABELS = Object.freeze({ local: 'Local IIS', remote: 'Server', na: 'N/A' });
+  const SAVED_ENVS = Object.freeze(['local', 'remote', 'na']);
 
   /** @returns {"local"|"remote"|"unknown"} */
   function classifyIp(ip) {
@@ -23,5 +25,5 @@
     return parts.length === 8 && parts.slice(0, 7).every((p) => /^0{1,4}$/.test(p)) && /^0{0,3}1$/.test(parts[7]);
   }
 
-  DLV.env = { classifyIp, DEFAULT_LABELS };
+  DLV.env = { classifyIp, DEFAULT_LABELS, SAVED_ENVS };
 })(globalThis.DLV);

@@ -82,7 +82,7 @@ test('getPending never exposes the password', async () => {
   assert.ok(!JSON.stringify(pending).includes(SECRET));
   assert.equal(pending.username, 'ava');
   assert.equal(pending.env, 'local');
-  assert.deepEqual(pending.labels, { local: 'Local IIS', remote: 'Server' });
+  assert.deepEqual(pending.labels, { local: 'Local IIS', remote: 'Server', na: 'N/A' });
 });
 
 test('pending is "update" for known username with new password', async () => {
@@ -103,6 +103,7 @@ test('pending for an already saved login is dropped', async () => {
 
 test('pending for unknown env requires env on save', async () => {
   const { service } = await ready();
+  await service.addEntry({ origin: SITE, env: 'local', username: 'someone', password: 'x' }); // hosting matters here
   await service.putPending(7, { origin: SITE, username: 'ava', password: SECRET });
   assert.equal((await service.getPending(7)).env, 'unknown');
   await assert.rejects(service.savePending(7), DLV.VaultService.EnvRequiredError);
@@ -175,7 +176,7 @@ test('listForSite hides passwords and includes labels', async () => {
   assert.ok(!JSON.stringify(list).includes(SECRET));
   assert.deepEqual(list.current.map((e) => [e.username, e.note, e.env]), [['ava', 'admin', 'local']]);
   assert.deepEqual(list.other.map((e) => e.username), ['srv']);
-  assert.deepEqual(list.labels, { local: 'Local IIS – philippinesdev', remote: 'Server' });
+  assert.deepEqual(list.labels, { local: 'Local IIS – philippinesdev', remote: 'Server', na: 'N/A' });
 });
 
 test('getFillData refuses a different origin', async () => {
@@ -353,4 +354,52 @@ test('with an unknown environment an already saved login is not offered again', 
   assert.equal(await service.getPending(7), null);
   await service.putPending(7, { origin: SITE, username: 'srv', password: 'changed' });
   assert.equal((await service.getPending(7)).kind, 'save');
+});
+
+test('a site with no Local/Server logins defaults new saves to N/A and hides the environment', async () => {
+  const { service } = await ready();
+  const WEB = 'https://login.microsoftonline.com';
+  await service.setTabEnv(7, WEB, '20.190.1.1');
+  await service.putPending(7, { origin: WEB, username: 'aloka', password: SECRET });
+  assert.equal((await service.getPending(7)).env, 'na');
+  assert.equal((await service.listForSite(WEB, 'remote')).envMatters, false);
+  await service.savePending(7, 'na');
+  await service.setTabEnv(8, WEB, '20.190.1.2');
+  await service.putPending(8, { origin: WEB, username: 'aloka', password: SECRET });
+  assert.equal(await service.getPending(8), null);
+  const list = await service.listForSite(WEB, 'remote');
+  assert.deepEqual(list.current.map((e) => [e.username, e.env]), [['aloka', 'na']]);
+  assert.equal(list.labels.na, 'N/A');
+});
+
+test('a site served from this computer, or with Local/Server logins, keeps its environment', async () => {
+  const { service } = await ready();
+  await service.setTabEnv(7, SITE, '127.0.0.1');
+  await service.putPending(7, { origin: SITE, username: 'ava', password: SECRET });
+  assert.equal((await service.getPending(7)).env, 'local');
+  assert.equal((await service.listForSite(SITE, 'local')).envMatters, true);
+  await service.addEntry({ origin: 'https://qa.test', env: 'remote', username: 'q', password: 'x' });
+  await service.setTabEnv(9, 'https://qa.test', '52.1.2.3');
+  await service.putPending(9, { origin: 'https://qa.test', username: 'other', password: SECRET });
+  assert.equal((await service.getPending(9)).env, 'remote');
+  assert.equal((await service.listForSite('https://qa.test', 'remote')).envMatters, true);
+});
+
+test('updating the password of an N/A login keeps it N/A', async () => {
+  const { service } = await ready();
+  await service.addEntry({ origin: SITE, env: 'na', username: 'ava', password: 'old' });
+  await service.addEntry({ origin: SITE, env: 'remote', username: 'srv', password: 'x' });
+  await service.setTabEnv(7, SITE, '52.1.2.3');
+  await service.putPending(7, { origin: SITE, username: 'ava', password: 'new' });
+  const p = await service.getPending(7);
+  assert.deepEqual([p.kind, p.env], ['update', 'na']);
+  await service.savePending(7, p.env);
+  const list = await service.listForSite(SITE, 'remote');
+  assert.deepEqual(list.current.map((e) => [e.username, e.env]).sort(), [['ava', 'na'], ['srv', 'remote']]);
+});
+
+test('import accepts N/A logins', async () => {
+  const { service } = await ready();
+  const entry = { id: 'x', origin: SITE, env: 'na', username: 'a', password: 'p', note: '', createdAt: 'a', updatedAt: 'a', lastUsedAt: 'a' };
+  assert.deepEqual(await service.importVault({ version: 1, entries: [entry], neverSave: [], envLabels: {} }), { added: 1, updated: 0, unchanged: 0 });
 });

@@ -112,10 +112,11 @@
 
   function message(p, env) {
     const host = new URL(p.origin).host;
-    const label = env === 'local' || env === 'remote' ? p.labels[env] : 'choose environment';
+    // N/A logins are not tied to Local/Server, so the message names no environment for them.
+    const suffix = env === 'na' ? '' : ` (${env === 'local' || env === 'remote' ? p.labels[env] : 'choose environment'})`;
     if (p.kind === 'locked') return `Unlock Dev Login Vault to save "${p.username}". Click the padlock in the toolbar.`;
-    if (p.kind === 'update') return `Update password for "${p.username}" on ${host} (${label})?`;
-    return `Save login "${p.username}" for ${host} (${label})?`;
+    if (p.kind === 'update') return `Update password for "${p.username}" on ${host}${suffix}?`;
+    return `Save login "${p.username}" for ${host}${suffix}?`;
   }
 
   function showBar(p) {
@@ -142,8 +143,12 @@
     } else {
       const controls = el('div', { class: 'controls' });
       const select = el('select', { ariaLabel: 'Environment', title: 'Change environment' });
-      if (p.env !== 'local' && p.env !== 'remote') select.append(el('option', { value: '', selected: true, disabled: true }, 'Choose environment…'));
-      for (const env of ['local', 'remote']) select.append(el('option', { value: env, selected: env === p.env }, p.labels[env]));
+      const ENV_CHOICES = ['local', 'remote', 'na'];
+      if (!ENV_CHOICES.includes(p.env)) select.append(el('option', { value: '', selected: true, disabled: true }, 'Choose environment…'));
+      for (const env of ENV_CHOICES) {
+        const text = env === 'na' ? `${p.labels.na || 'N/A'} (not environment-specific)` : p.labels[env];
+        select.append(el('option', { value: env, selected: env === p.env }, text));
+      }
       const save = el('button', { type: 'button', class: 'primary', 'data-action': 'save', disabled: !select.value }, p.kind === 'update' ? 'Update' : 'Save');
       select.addEventListener('change', () => { save.disabled = !select.value; msg.textContent = message(p, select.value); });
       save.addEventListener('click', async () => {

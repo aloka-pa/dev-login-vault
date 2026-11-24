@@ -19,5 +19,6 @@ test('missing address is unknown', () => {
 });
 
 test('default labels', () => {
-  assert.deepEqual({ ...DLV.env.DEFAULT_LABELS }, { local: 'Local IIS', remote: 'Server' });
+  assert.deepEqual({ ...DLV.env.DEFAULT_LABELS }, { local: 'Local IIS', remote: 'Server', na: 'N/A' });
+  assert.deepEqual([...DLV.env.SAVED_ENVS], ['local', 'remote', 'na']);
 });

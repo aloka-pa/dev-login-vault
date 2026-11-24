@@ -1,5 +1,7 @@
 body { width: 372px; min-height: 220px; }
 main { padding: 14px; display: grid; gap: 13px; }
+#listView { display: grid; gap: 13px; }
+#listView > .dlv-msg { margin: 0; }
 
 .icon-btn {
   display: inline-grid; place-items: center; width: 32px; height: 32px; padding: 0;
@@ -48,6 +50,7 @@ main { padding: 14px; display: grid; gap: 13px; }
 }
 .avatar.local { background: var(--dlv-orange-soft); color: var(--dlv-orange); }
 .avatar.remote { background: var(--dlv-navy-soft); color: var(--dlv-navy-light); }
+.avatar.na { background: rgba(165, 177, 192, 0.12); color: var(--dlv-text-2); }
 .who { min-width: 0; display: grid; }
 .login .user { font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .login .note { font-size: 11.5px; color: var(--dlv-text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -156,3 +156,23 @@ test('merge gives an added entry a new id when its id is already used', () => {
   assert.equal(vault.entries.length, 2);
   assert.equal(new Set(ids).size, 2);
 });
+
+test('N/A logins are listed for every detected environment', () => {
+  let v = V.upsertLogin(V.emptyVault(), login({ env: 'na', username: 'any' }), T1).vault;
+  v = V.upsertLogin(v, login({ env: 'local', username: 'loc' }), T1).vault;
+  v = V.upsertLogin(v, login({ env: 'remote', username: 'srv' }), T1).vault;
+  const names = (r) => ({ current: r.current.map((e) => e.username).sort(), other: r.other.map((e) => e.username).sort() });
+  assert.deepEqual(names(V.findForSite(v, SITE, 'local')), { current: ['any', 'loc'], other: ['srv'] });
+  assert.deepEqual(names(V.findForSite(v, SITE, 'remote')), { current: ['any', 'srv'], other: ['loc'] });
+  assert.deepEqual(names(V.findForSite(v, SITE, 'unknown')), { current: ['any'], other: ['loc', 'srv'] });
+});
+
+test('a sign-in in any environment matches an N/A login', () => {
+  const v = V.upsertLogin(V.emptyVault(), login({ env: 'na' }), T1).vault;
+  assert.equal(V.classifyPending(v, login({ env: 'remote' })), 'none');
+  assert.equal(V.classifyPending(v, login({ env: 'unknown', password: 'new' })), 'update');
+});
+
+test('N/A label is fixed', () => {
+  assert.equal(V.labelFor(V.emptyVault(), SITE, 'na'), 'N/A');
+});

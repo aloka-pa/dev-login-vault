@@ -1,6 +1,7 @@
 # Dev Login Vault
 
-A personal browser extension for Microsoft Edge and Google Chrome that remembers the logins for your local, dev and QA sites.
+A personal browser extension for Microsoft Edge and Google Chrome that remembers your logins (work dev/QA instances,
+university, any other site), encrypted on this device.
 
 - When you sign in, it offers **Save login?** and stores the site, username and password, encrypted with your master password.
 - On a login page, click the padlock in the toolbar and **click a username to fill** the username and password.
@@ -60,6 +61,15 @@ So with `127.0.0.1 hrmmainphdev01.phrsandbox.dev` switched on in `C:\Windows\Sys
   popup lists all logins for the site, and the save bar asks you to pick the environment. Reload the page to detect it.
 - If your browser uses a proxy, the address seen is the proxy's. Local (`127.0.0.1`) sites normally bypass the proxy.
 - Rename the environments per site in **Settings** (e.g. "Local IIS – philippinesdev").
+
+### N/A: sites where hosting does not matter
+
+For ordinary websites (Microsoft sign-in, Azure DevOps, …) choose **N/A (not environment-specific)** when saving or adding
+a login. N/A logins are offered on that site whatever its address is, and they never show a Local/Server label.
+
+The Local/Server chip in the popup only appears on sites where it matters: a site served from this computer, or one that
+already has Local IIS or Server logins. On other sites the chip and the "Environment unknown" message are hidden, and new
+logins default to N/A.
 
 ## Moving logins between Edge and Chrome
 

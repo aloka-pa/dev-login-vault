@@ -24,9 +24,20 @@
   }
 
   const optionalString = (v) => v === undefined || typeof v === 'string';
+  const SAVED_ENVS = DLV.env.SAVED_ENVS;
+
+  /** Local/Server only matters on a site served from this computer, or one that already has Local/Server logins. */
+  const envMatters = (vault, origin, env) =>
+    env === 'local' || vault.entries.some((e) => e.origin === origin && (e.env === 'local' || e.env === 'remote'));
+
+  const labelsFor = (vault, origin) => ({
+    local: DLV.vault.labelFor(vault, origin, 'local'),
+    remote: DLV.vault.labelFor(vault, origin, 'remote'),
+    na: DLV.env.DEFAULT_LABELS.na,
+  });
 
   function assertValidVault(v) {
-    const isEntry = (e) => e && typeof e === 'object' && typeof e.id === 'string' && isOrigin(e.origin) && ENVS.includes(e.env)
+    const isEntry = (e) => e && typeof e === 'object' && typeof e.id === 'string' && isOrigin(e.origin) && SAVED_ENVS.includes(e.env)
       && typeof e.username === 'string' && typeof e.password === 'string' && typeof e.updatedAt === 'string'
       && optionalString(e.note) && optionalString(e.createdAt) && optionalString(e.lastUsedAt);
     const isLabels = (labels) => labels && typeof labels === 'object' && Object.values(labels).every((l) => typeof l === 'string');
@@ -189,9 +200,9 @@
       const view = { origin: item.origin, env: item.env, username: item.username };
       if (!(await this.isUnlocked())) return { ...view, kind: 'locked', labels: { ...DLV.env.DEFAULT_LABELS } };
       const vault = await this.getVault();
-      // Already saved (in this environment, or in either one when the environment is unknown): no prompt, just mark it used.
+      // Already saved (this environment, an N/A login, or any one when the environment is unknown): no prompt, mark it used.
       const saved = vault.entries.find((e) => e.origin === item.origin && e.username === item.username && e.password === item.password
-        && (e.env === item.env || !ENVS.includes(item.env)));
+        && (e.env === item.env || e.env === 'na' || !ENVS.includes(item.env)));
       if (saved) {
         await this.change((v) => V().markUsed(v, saved.id, this.nowIso()));
         await this.dismissPending(tabId);
@@ -199,15 +210,18 @@
       }
       const kind = V().classifyPending(vault, item);
       if (kind === 'none' || kind === 'never') { await this.dismissPending(tabId); return null; }
-      return { ...view, kind, labels: { local: V().labelFor(vault, item.origin, 'local'), remote: V().labelFor(vault, item.origin, 'remote') } };
+      // Suggest N/A when the username is saved as N/A, or when hosting does not matter on this site.
+      const match = V().findMatch(vault, item);
+      const env = (match && match.env === 'na') || !envMatters(vault, item.origin, item.env) ? 'na' : item.env;
+      return { ...view, env, kind, labels: labelsFor(vault, item.origin) };
     }
 
     async savePending(tabId, env) {
       const item = await this.readPending(tabId);
       if (!item) return null;
-      const chosen = ENVS.includes(env) ? env : item.env;
+      const chosen = SAVED_ENVS.includes(env) ? env : item.env;
       if (!(await this.isUnlocked())) throw new LockedError();
-      if (!ENVS.includes(chosen)) throw new EnvRequiredError();
+      if (!SAVED_ENVS.includes(chosen)) throw new EnvRequiredError();
       const outcome = await this.change((vault) => {
         const r = V().upsertLogin(vault, { ...item, env: chosen }, this.nowIso());
         return { vault: r.vault, result: r.outcome };
@@ -235,7 +249,8 @@
       return {
         current: current.map(strip),
         other: other.map(strip),
-        labels: { local: V().labelFor(vault, origin, 'local'), remote: V().labelFor(vault, origin, 'remote') },
+        labels: labelsFor(vault, origin),
+        envMatters: envMatters(vault, origin, env),
       };
     }
 

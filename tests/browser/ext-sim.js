@@ -34,7 +34,10 @@
     const mode = params.get('state') || 'list';
     if (mode === 'new') return;
     await service.setup('test-master-pw');
-    if (mode !== 'empty') {
+    if (mode === 'na') {
+      await service.addEntry({ origin: SITE, env: 'na', username: 'aloka.pa@example.test', password: 'fixture-pw-5', note: 'work account' });
+      await service.addEntry({ origin: SITE, env: 'na', username: 'second@example.test', password: 'fixture-pw-6' });
+    } else if (mode !== 'empty') {
       await service.addEntry({ origin: SITE, env: 'local', username: '00001774', password: 'fixture-pw-1', note: 'Aloka (admin)' });
       await service.addEntry({ origin: SITE, env: 'local', username: 'ava.qa', password: 'fixture-pw-2' });
       await service.addEntry({ origin: SITE, env: 'remote', username: 'server.user', password: 'fixture-pw-3', note: 'read-only DB' });

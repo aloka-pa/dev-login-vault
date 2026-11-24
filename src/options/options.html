@@ -78,6 +78,19 @@
       </section>
 
       <section class="dlv-card">
+        <h2>Hosts file</h2>
+        <p class="section-sub">Switch a site between your local IIS (127.0.0.1) and the server. Windows asks “Allow changes?” every time.</p>
+        <ul id="hostsList" class="plain"></ul>
+        <div id="hostsInstall" hidden>
+          <p class="dlv-hint">The hosts helper is not installed yet. In PowerShell, run this once from the extension folder
+            (add the Chrome ID too, comma-separated, if you use both browsers):</p>
+          <pre class="code" id="hostsInstallCmd"></pre>
+          <button type="button" class="dlv-btn small" id="hostsInstallCopy">Copy command</button>
+        </div>
+        <p class="dlv-msg" id="hostsSettingsMsg" role="status" hidden></p>
+      </section>
+
+      <section class="dlv-card">
         <h2>Environment names</h2>
         <p class="dlv-hint">Local = the page came from this computer (127.0.0.1, your hosts file). Server = any other address. Leave a box empty for the default name.</p>
         <div id="labels"></div>

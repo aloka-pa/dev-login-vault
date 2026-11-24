@@ -37,6 +37,7 @@
     const [settings, overview] = await Promise.all([send({ type: 'getSettings' }), send({ type: 'getOverview' })]);
     if (lockedReply(settings) || lockedReply(overview)) { await start(); return; }
     await renderRecovery();
+    await renderHosts();
     $('lockMinutes').value = settings.data.autoLockMinutes;
     $('submitAfterFill').checked = !!settings.data.submitAfterFill;
     $('showBanner').checked = settings.data.showBanner !== false;
@@ -69,6 +70,43 @@
       return form;
     }));
   }
+
+  async function renderHosts() {
+    const reply = await send({ type: 'hostsList' });
+    const result = reply.ok ? reply.data : { ok: false, error: reply.error };
+    $('hostsInstall').hidden = result.ok;
+    $('hostsInstallCmd').textContent =
+      `powershell -ExecutionPolicy Bypass -File native\\install-hosts-helper.ps1 -ExtensionId ${chrome.runtime.id}`;
+    if (!result.ok) { $('hostsList').replaceChildren(); return; }
+    if (!result.entries.length) {
+      $('hostsList').replaceChildren(el('li', {}, 'No 127.0.0.1 lines in your hosts file.'));
+      return;
+    }
+    $('hostsList').replaceChildren(...result.entries.map((entry) => {
+      const li = el('li');
+      li.append(el('span', {}, entry.hosts.join(', ')));
+      li.append(el('span', { className: `host-state ${entry.active ? 'on' : 'off'}` }, entry.active ? 'Local (127.0.0.1)' : 'Server'));
+      const btn = el('button', { type: 'button', className: 'dlv-btn small' }, entry.active ? 'Switch to Server' : 'Switch to Local');
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        say('hostsSettingsMsg', 'Waiting for the Windows "Allow changes?" prompt…', '');
+        const r = await send({ type: 'hostsSet', host: entry.hosts[0], local: !entry.active });
+        const res = r.ok ? r.data : { ok: false, error: r.error };
+        if (res.ok) say('hostsSettingsMsg', `Switched ${entry.hosts.join(', ')}. Reload open pages of that site.`, 'ok');
+        else say('hostsSettingsMsg', res.error === 'CANCELLED' ? 'Cancelled in the Windows prompt. Nothing changed.'
+          : res.error === 'HOSTS_CHANGED' ? 'The hosts file changed in the meantime. Nothing changed; try again.'
+            : 'Could not change the hosts file. Nothing changed.', 'err');
+        await renderHosts();
+      });
+      li.append(btn);
+      return li;
+    }));
+  }
+
+  $('hostsInstallCopy').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText($('hostsInstallCmd').textContent); say('hostsSettingsMsg', 'Copied.', 'ok'); }
+    catch { say('hostsSettingsMsg', 'Could not copy. Select the command and copy it.', 'err'); }
+  });
 
   async function renderRecovery() {
     const r = await send({ type: 'recoveryStatus' });

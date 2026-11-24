@@ -86,6 +86,15 @@ summary::-webkit-details-marker { display: none; }
 details[open] .chev { transform: rotate(90deg); }
 details .logins { margin-top: 8px; }
 
+/* Hosts file switch */
+.hosts-row {
+  display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px;
+  background: var(--dlv-surface); border: 1px solid var(--dlv-border); font-size: 12px; color: var(--dlv-text-2);
+}
+.hosts-text { flex: 1; min-width: 0; }
+.hosts-text strong { color: var(--dlv-text); font-weight: 650; }
+.hosts-row .dlv-btn { flex: none; }
+
 /* Recovery */
 .recovery-key {
   margin-top: 12px; padding: 12px; border-radius: var(--dlv-radius); border: 1px dashed var(--dlv-orange);

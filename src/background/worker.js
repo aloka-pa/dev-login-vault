@@ -11,7 +11,7 @@ if (typeof importScripts === 'function') {
   const ERROR_CODES = {
     LockedError: 'LOCKED', OriginMismatchError: 'ORIGIN_MISMATCH', EnvRequiredError: 'ENV_REQUIRED',
     InvalidFileError: 'INVALID_FILE', WrongPasswordError: 'WRONG_PASSWORD', AlreadyInitializedError: 'ALREADY_INITIALIZED',
-    ForbiddenError: 'FORBIDDEN',
+    ForbiddenError: 'FORBIDDEN', HelperMissingError: 'HELPER_MISSING',
   };
 
   const clampMinutes = (n) => Math.min(240, Math.max(5, Math.round(Number(n) || 30)));
@@ -23,10 +23,16 @@ if (typeof importScripts === 'function') {
    */
   function createRouter(service, deps) {
     const forbidden = () => Object.assign(new Error('Not allowed from this frame'), { name: 'ForbiddenError' });
+    const helperMissing = () => Object.assign(new Error('Hosts helper not installed'), { name: 'HelperMissingError' });
 
     async function pendingTabIds() {
       const all = await service.session.get(null);
       return Object.keys(all).filter((k) => k.startsWith('pending:')).map((k) => Number(k.slice(8)));
+    }
+
+    async function callHelper(message) {
+      if (!deps.native) throw helperMissing();
+      try { return await deps.native(message); } catch { throw helperMissing(); }
     }
 
     /** Waiting logins captured while locked: clear their "!" and show their save card now. */
@@ -76,6 +82,9 @@ if (typeof importScripts === 'function') {
         if (ok) await afterUnlock();
         return ok;
       },
+      // Hosts-file helper (native/host.mjs). Its own reply ({ ok, entries | error }) is passed through as data.
+      hostsList: () => callHelper({ type: 'list' }),
+      hostsSet: (m) => callHelper({ type: 'set', host: m.host, local: m.local === true }),
       createRecoveryKey: () => service.createRecoveryKey(),
       recoveryStatus: () => service.recoveryStatus(),
       async lock() {
@@ -213,6 +222,7 @@ if (typeof importScripts === 'function') {
       try { await chrome.tabs.sendMessage(tabId, { type: 'checkPending' }, { frameId: 0 }); } catch { /* no content script there */ }
     },
     applyIdle,
+    native: (message) => chrome.runtime.sendNativeMessage('dev_login_vault.hosts', message),
     async refreshBanners() {
       for (const tab of await chrome.tabs.query({})) {
         chrome.tabs.sendMessage(tab.id, { type: 'refreshBanner' }, { frameId: 0 }).catch(() => {});

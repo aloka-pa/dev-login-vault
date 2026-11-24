@@ -78,6 +78,23 @@ summary::-webkit-details-marker { display: none; }
 details[open] .chev { transform: rotate(90deg); }
 details .logins { margin-top: 8px; }
 
+/* Recovery */
+.recovery-key {
+  margin-top: 12px; padding: 12px; border-radius: var(--dlv-radius); border: 1px dashed var(--dlv-orange);
+  background: var(--dlv-bg); color: var(--dlv-orange); font: 600 14px/1.6 "Cascadia Mono", Consolas, monospace;
+  letter-spacing: 0.5px; text-align: center; user-select: all;
+}
+.check { display: flex; gap: 8px; align-items: center; font-size: 12.5px; color: var(--dlv-text); margin-top: 14px; cursor: pointer; }
+.check input { width: 16px; height: 16px; margin: 0; }
+.link-btn { display: block; margin: 12px auto 0; background: none; border: 0; padding: 2px; cursor: pointer;
+  font: inherit; font-size: 12.5px; color: var(--dlv-navy-light); text-decoration: underline; }
+.link-btn:hover { color: var(--dlv-text); }
+.nudge {
+  display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;
+  background: var(--dlv-orange-soft); border: 1px solid rgba(254, 168, 50, 0.35); color: #FFD9A3;
+}
+.nudge .dlv-btn { flex: none; }
+
 .empty { text-align: center; padding: 18px 10px; color: var(--dlv-text-2); }
 .empty p { margin: 0; }
 .add { border-style: dashed; color: var(--dlv-text-2); }

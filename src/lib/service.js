@@ -2,6 +2,7 @@
 // `local` and `session` follow the chrome.storage promise API, so Node tests can pass in-memory fakes.
 (function (DLV) {
   const PENDING_MS = 120_000;
+  const RECOVERY_ITERATIONS = 100_000;
   const V = () => DLV.vault;
 
   class LockedError extends Error { constructor() { super('The vault is locked'); this.name = 'LockedError'; } }
@@ -50,11 +51,13 @@
   }
 
   class VaultService {
-    constructor({ local, session, now = () => new Date(), iterations = DLV.crypto.ITERATIONS }) {
+    constructor({ local, session, now = () => new Date(), iterations = DLV.crypto.ITERATIONS, recoveryIterations }) {
       this.local = local;
       this.session = session;
       this.now = now;
       this.iterations = iterations;
+      // The recovery key is 160 random bits, so it needs far fewer rounds than a password; tests pass small numbers.
+      this.recoveryIterations = recoveryIterations ?? Math.min(iterations, RECOVERY_ITERATIONS);
       this.queue = Promise.resolve();
     }
 
@@ -82,19 +85,55 @@
 
     async isUnlocked() { return (await this.status()).unlocked; }
 
-    async writeVault(vault, key, salt, iterations) {
-      const box = await DLV.crypto.encryptJson(key, vault);
-      await this.local.set({ vaultBox: { salt, iterations, ...box } });
+    // Storage format (version 2): the vault is encrypted with a random vault key. That key is stored twice, each copy
+    // encrypted ("wrapped") with a key derived from a secret: wraps.password (master password) and, once created,
+    // wraps.recovery (recovery key). Version 1 (earlier builds) encrypted the vault straight with the password key.
+
+    /** Encrypts the vault key with a key derived from secret. */
+    async wrap(keyB64, secret, iterations) {
+      const salt = DLV.crypto.randomSaltB64();
+      const wrapping = await DLV.crypto.deriveKey(secret, salt, iterations);
+      return { salt, iterations, ...(await DLV.crypto.encryptJson(wrapping, { k: keyB64 })) };
+    }
+
+    /** The vault key from a wrap, or null when the secret is wrong. */
+    async unwrap(wrapped, secret) {
+      const wrapping = await DLV.crypto.deriveKey(secret, wrapped.salt, wrapped.iterations);
+      try { return (await DLV.crypto.decryptJson(wrapping, wrapped)).k; } catch (err) {
+        if (err instanceof DLV.crypto.WrongPasswordError) return null;
+        throw err;
+      }
+    }
+
+    /**
+     * The vault key for a master password, or null when it is wrong. A version-1 vault is upgraded to version 2 here
+     * (new random vault key, same logins, no recovery key yet).
+     */
+    async openWithPassword(box, password) {
+      if (!box) return null;
+      if (box.version === 2) return this.unwrap(box.wraps.password, password);
+      const oldKey = await DLV.crypto.deriveKey(password, box.salt, box.iterations);
+      let vault;
+      try { vault = await DLV.crypto.decryptJson(oldKey, box); } catch (err) {
+        if (err instanceof DLV.crypto.WrongPasswordError) return null;
+        throw err;
+      }
+      const keyB64 = DLV.crypto.randomKeyB64();
+      const encrypted = await DLV.crypto.encryptJson(await DLV.crypto.importKeyB64(keyB64), vault);
+      await this.local.set({ vaultBox: { version: 2, ...encrypted, wraps: { password: await this.wrap(keyB64, password, this.iterations) } } });
+      return keyB64;
     }
 
     async save(vault) {
       const box = await this.readBox();
-      await this.writeVault(vault, await this.key(), box.salt, box.iterations);
+      const encrypted = await DLV.crypto.encryptJson(await this.key(), vault);
+      await this.local.set({ vaultBox: { ...box, ...encrypted } });
     }
 
     async getVault() {
       const key = await this.key();
-      return DLV.crypto.decryptJson(key, await this.readBox());
+      const box = await this.readBox();
+      return DLV.crypto.decryptJson(key, { iv: box.iv, ciphertext: box.ciphertext });
     }
 
     /** Applies fn(vault) -> vault | { vault, result } and saves, serialised. */
@@ -107,27 +146,29 @@
       });
     }
 
+    /** Creates the vault and returns { recoveryKey } for the user to keep. */
     setup(password) {
       return this.serial(async () => {
         if (await this.readBox()) throw new AlreadyInitializedError();
-        const salt = DLV.crypto.randomSaltB64();
-        const key = await DLV.crypto.deriveKey(password, salt, this.iterations);
-        await this.writeVault(V().emptyVault(), key, salt, this.iterations);
-        await this.session.set({ keyB64: await DLV.crypto.exportKeyB64(key) });
+        const keyB64 = DLV.crypto.randomKeyB64();
+        const recoveryKey = DLV.crypto.newRecoveryKey();
+        const encrypted = await DLV.crypto.encryptJson(await DLV.crypto.importKeyB64(keyB64), V().emptyVault());
+        const wraps = {
+          password: await this.wrap(keyB64, password, this.iterations),
+          recovery: { ...(await this.wrap(keyB64, DLV.crypto.normalizeRecoveryKey(recoveryKey), this.recoveryIterations)), createdAt: this.nowIso() },
+        };
+        await this.local.set({ vaultBox: { version: 2, ...encrypted, wraps } });
+        await this.session.set({ keyB64 });
+        return { recoveryKey };
       });
     }
 
-    /** Serialised with password changes, so a slow unlock can never store a key for an older salt. */
+    /** Serialised with password changes, so a slow unlock can never store a stale key. */
     unlock(password) {
       return this.serial(async () => {
-        const box = await this.readBox();
-        if (!box) return false;
-        const key = await DLV.crypto.deriveKey(password, box.salt, box.iterations);
-        try { await DLV.crypto.decryptJson(key, box); } catch (err) {
-          if (err instanceof DLV.crypto.WrongPasswordError) return false;
-          throw err;
-        }
-        await this.session.set({ keyB64: await DLV.crypto.exportKeyB64(key) });
+        const keyB64 = await this.openWithPassword(await this.readBox(), password);
+        if (!keyB64) return false;
+        await this.session.set({ keyB64 });
         return true;
       });
     }
@@ -276,18 +317,52 @@
     setSettings(partial) { return this.change((vault) => ({ ...vault, settings: { ...vault.settings, ...partial } })); }
     async getSettings() { return (await this.getVault()).settings; }
 
+    /** Re-locks the vault key with the new password; the vault itself and the recovery key are unchanged. */
     changePassword(oldPassword, newPassword) {
       return this.serial(async () => {
         const box = await this.readBox();
-        const oldKey = await DLV.crypto.deriveKey(oldPassword, box.salt, box.iterations);
-        let vault;
-        try { vault = await DLV.crypto.decryptJson(oldKey, box); } catch { return false; }
-        const salt = DLV.crypto.randomSaltB64();
-        const key = await DLV.crypto.deriveKey(newPassword, salt, this.iterations);
-        await this.writeVault(vault, key, salt, this.iterations);
-        await this.session.set({ keyB64: await DLV.crypto.exportKeyB64(key) });
+        const keyB64 = await this.openWithPassword(box, oldPassword);
+        if (!keyB64) return false;
+        const fresh = await this.readBox();
+        await this.local.set({ vaultBox: { ...fresh, wraps: { ...fresh.wraps, password: await this.wrap(keyB64, newPassword, this.iterations) } } });
+        await this.session.set({ keyB64 });
         return true;
       });
+    }
+
+    // ---- Recovery key ----
+
+    /** Unlocks with the recovery key and sets a new master password. False for a wrong key or no recovery key. */
+    recoverWithKey(recoveryKey, newPassword) {
+      return this.serial(async () => {
+        const box = await this.readBox();
+        const normalized = DLV.crypto.normalizeRecoveryKey(recoveryKey);
+        if (!box || box.version !== 2 || !box.wraps.recovery || !normalized) return false;
+        const keyB64 = await this.unwrap(box.wraps.recovery, normalized);
+        if (!keyB64) return false;
+        await this.local.set({ vaultBox: { ...box, wraps: { ...box.wraps, password: await this.wrap(keyB64, newPassword, this.iterations) } } });
+        await this.session.set({ keyB64 });
+        return true;
+      });
+    }
+
+    /** Makes a new recovery key (the previous one stops working) and returns it for the user to keep. */
+    createRecoveryKey() {
+      return this.serial(async () => {
+        const { keyB64 } = await this.session.get('keyB64');
+        if (!keyB64) throw new LockedError();
+        const recoveryKey = DLV.crypto.newRecoveryKey();
+        const recovery = { ...(await this.wrap(keyB64, DLV.crypto.normalizeRecoveryKey(recoveryKey), this.recoveryIterations)), createdAt: this.nowIso() };
+        const box = await this.readBox();
+        await this.local.set({ vaultBox: { ...box, wraps: { ...box.wraps, recovery } } });
+        return recoveryKey;
+      });
+    }
+
+    async recoveryStatus() {
+      const box = await this.readBox();
+      const recovery = box && box.version === 2 && box.wraps.recovery;
+      return { hasRecoveryKey: !!recovery, createdAt: recovery ? recovery.createdAt : null };
     }
 
     exportVaultPlain() { return this.getVault(); }

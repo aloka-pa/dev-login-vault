@@ -57,5 +57,35 @@
     return JSON.parse(new TextDecoder().decode(plain));
   }
 
-  DLV.crypto = { ITERATIONS, WrongPasswordError, randomSaltB64, deriveKey, exportKeyB64, importKeyB64, encryptJson, decryptJson };
+  /** A random 256-bit vault key, base64. */
+  const randomKeyB64 = () => randomB64(32);
+
+  // ---- Recovery key: 160 random bits written as 32 Crockford base32 characters, "DLV-XXXX-XXXX-…" ----
+  const RECOVERY_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+  const RECOVERY_LENGTH = 32;
+
+  function newRecoveryKey() {
+    const bytes = globalThis.crypto.getRandomValues(new Uint8Array(20));
+    let bits = 0, value = 0, out = '';
+    for (const byte of bytes) {
+      value = (value << 8) | byte;
+      bits += 8;
+      while (bits >= 5) { out += RECOVERY_ALPHABET[(value >>> (bits - 5)) & 31]; bits -= 5; }
+    }
+    return 'DLV-' + out.match(/.{4}/g).join('-');
+  }
+
+  /** Canonical form (32 characters) of what the user typed, or null if it cannot be a recovery key. */
+  function normalizeRecoveryKey(input) {
+    let s = String(input ?? '').toUpperCase().replace(/[\s-]/g, '');
+    if (s.startsWith('DLV')) s = s.slice(3);
+    s = s.replace(/O/g, '0').replace(/[IL]/g, '1');
+    if (s.length !== RECOVERY_LENGTH) return null;
+    return [...s].every((c) => RECOVERY_ALPHABET.includes(c)) ? s : null;
+  }
+
+  DLV.crypto = {
+    ITERATIONS, WrongPasswordError, randomSaltB64, randomKeyB64, deriveKey, exportKeyB64, importKeyB64, encryptJson, decryptJson,
+    newRecoveryKey, normalizeRecoveryKey,
+  };
 })(globalThis.DLV);

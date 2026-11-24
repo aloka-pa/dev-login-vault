@@ -36,6 +36,7 @@
   async function load() {
     const [settings, overview] = await Promise.all([send({ type: 'getSettings' }), send({ type: 'getOverview' })]);
     if (lockedReply(settings) || lockedReply(overview)) { await start(); return; }
+    await renderRecovery();
     $('lockMinutes').value = settings.data.autoLockMinutes;
     $('submitAfterFill').checked = !!settings.data.submitAfterFill;
     renderLabels(overview.data);
@@ -67,6 +68,48 @@
       return form;
     }));
   }
+
+  async function renderRecovery() {
+    const r = await send({ type: 'recoveryStatus' });
+    if (!r.ok) return;
+    $('recoveryStatusText').textContent = r.data.hasRecoveryKey
+      ? `You have a recovery key (created ${new Date(r.data.createdAt).toLocaleString()}).`
+      : 'No recovery key yet. Create one now.';
+    $('recoveryCreateBtn').textContent = r.data.hasRecoveryKey ? 'Make a new recovery key' : 'Create recovery key';
+  }
+
+  $('recoveryCreateBtn').addEventListener('click', async () => {
+    const status = await send({ type: 'recoveryStatus' });
+    if (status.ok && status.data.hasRecoveryKey && !$('recoveryCreateBtn').dataset.confirm) {
+      $('recoveryCreateBtn').dataset.confirm = '1';
+      $('recoveryCreateBtn').textContent = 'Yes, replace my old recovery key';
+      return say('recoveryMsg', 'Your old recovery key will stop working. Click again to continue.', '');
+    }
+    delete $('recoveryCreateBtn').dataset.confirm;
+    const r = await send({ type: 'createRecoveryKey' });
+    if (!r.ok) { if (lockedReply(r)) return start(); return say('recoveryMsg', 'Could not create a recovery key.', 'err'); }
+    $('optRecoveryKey').dataset.key = r.data;
+    $('optRecoveryKey').textContent = r.data.replace(/-/g, '-​'); // break only at dashes
+    $('recoveryNewKey').hidden = false;
+    say('recoveryMsg', 'Save this key now. It is shown only once.', 'ok');
+    await renderRecovery();
+  });
+
+  $('optRecoveryCopy').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText($('optRecoveryKey').dataset.key); say('recoveryMsg', 'Copied. Paste it somewhere safe, then clear your clipboard.', 'ok'); }
+    catch { say('recoveryMsg', 'Could not copy. Select the key and copy it, or use Download.', 'err'); }
+  });
+
+  $('optRecoveryDownload').addEventListener('click', () => {
+    const text = `Dev Login Vault recovery key\r\n\r\n${$('optRecoveryKey').dataset.key}\r\n\r\nCreated ${new Date().toLocaleString()}.\r\n`
+      + 'Use it on the unlock screen: "Forgot master password?".\r\nAnyone with this key can open your vault. Keep it offline and safe.\r\n';
+    const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+    const a = el('a', { href: url, download: 'dev-login-vault-recovery-key.txt' });
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  });
 
   function renderNever(list) {
     $('neverEmpty').hidden = list.length > 0;

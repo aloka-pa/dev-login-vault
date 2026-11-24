@@ -23,6 +23,17 @@ After changing any file, click the reload arrow on the extension's card.
 Click the padlock and set a **master password** (at least 8 characters). It cannot be recovered. If you forget it, the saved
 logins are lost, so keep an export file as a backup.
 
+## Recovery key (if you forget the master password)
+
+When you create the vault, the extension shows a **recovery key** like `DLV-7KQ2-…-M9X4`. Copy or download it and keep it
+somewhere safe and offline. If you forget the master password, click **Forgot master password?** on the unlock screen,
+enter the recovery key and choose a new master password. Your logins stay as they are.
+
+- Vaults made before this feature are upgraded the first time you unlock them; the popup then reminds you to create a key.
+- **Settings → Recovery key** makes a new key; the old one stops working.
+- Anyone with the recovery key can open the vault, just like with the master password.
+- Without the master password and without the recovery key, the vault cannot be opened by anyone.
+
 ## Saving a login
 
 Sign in as usual. A dark card appears in the top-right corner of the next page:

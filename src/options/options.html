@@ -56,6 +56,21 @@
       </section>
 
       <section class="dlv-card">
+        <h2>Recovery key</h2>
+        <p class="section-sub" id="recoveryStatusText"></p>
+        <p class="dlv-hint">The recovery key opens your vault if you forget the master password. Making a new one stops the old one from working.</p>
+        <div id="recoveryNewKey" hidden>
+          <div class="recovery-key" id="optRecoveryKey" aria-label="New recovery key"></div>
+          <div class="row" style="margin-top: 10px">
+            <button type="button" class="dlv-btn" id="optRecoveryCopy">Copy</button>
+            <button type="button" class="dlv-btn" id="optRecoveryDownload">Download .txt</button>
+          </div>
+        </div>
+        <p class="dlv-msg" id="recoveryMsg" role="status" hidden></p>
+        <button type="button" class="dlv-btn primary" id="recoveryCreateBtn" style="margin-top: 14px">Create recovery key</button>
+      </section>
+
+      <section class="dlv-card">
         <h2>Filling</h2>
         <label class="check"><input type="checkbox" id="submitAfterFill"> Submit the form after filling</label>
         <p class="dlv-msg" id="fillMsg" role="status" hidden></p>

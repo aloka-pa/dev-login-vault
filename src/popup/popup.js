@@ -11,8 +11,8 @@
   }
 
   function show(viewId) {
-    for (const id of ['setupView', 'lockedView', 'noSiteView', 'listView']) $(id).hidden = id !== viewId;
-    $('lockBtn').hidden = viewId === 'setupView' || viewId === 'lockedView';
+    for (const id of ['setupView', 'recoveryKeyView', 'lockedView', 'recoverView', 'noSiteView', 'listView']) $(id).hidden = id !== viewId;
+    $('lockBtn').hidden = ['setupView', 'lockedView', 'recoverView'].includes(viewId);
   }
 
   function say(id, text, kind) {
@@ -68,7 +68,75 @@
     const reply = await send({ type: 'setup', password: pw });
     if (!reply.ok) return say('setupMsg', 'Could not create the vault.', 'err');
     $('setupPw').value = $('setupPw2').value = '';
-    await showList();
+    showRecoveryKey(reply.data.recoveryKey);
+  });
+
+  // ---- Recovery key ----
+  // Line breaks only at the dashes; Copy/Download use the exact key from data-key.
+  const displayKey = (key) => key.replace(/-/g, '-​');
+
+  function showRecoveryKey(key) {
+    $('recoveryKeyText').dataset.key = key;
+    $('recoveryKeyText').textContent = displayKey(key);
+    $('recoverySaved').checked = false;
+    $('recoveryContinue').disabled = true;
+    say('recoveryKeyMsg', '');
+    show('recoveryKeyView');
+  }
+
+  $('recoverySaved').addEventListener('change', () => { $('recoveryContinue').disabled = !$('recoverySaved').checked; });
+  $('recoveryContinue').addEventListener('click', () => {
+    $('recoveryKeyText').textContent = '';
+    delete $('recoveryKeyText').dataset.key;
+    showList();
+  });
+
+  $('recoveryCopy').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText($('recoveryKeyText').dataset.key);
+      say('recoveryKeyMsg', 'Copied. Paste it somewhere safe, then clear your clipboard.', 'ok');
+    } catch { say('recoveryKeyMsg', 'Could not copy. Select the key and copy it, or use Download.', 'err'); }
+  });
+
+  $('recoveryDownload').addEventListener('click', () => {
+    const text = `Dev Login Vault recovery key\r\n\r\n${$('recoveryKeyText').dataset.key}\r\n\r\n`
+      + `Created ${new Date().toLocaleString()}.\r\nUse it on the unlock screen: "Forgot master password?".\r\n`
+      + 'Anyone with this key can open your vault. Keep it offline and safe.\r\n';
+    const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+    const a = el('a', { href: url, download: 'dev-login-vault-recovery-key.txt' });
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    say('recoveryKeyMsg', 'Downloaded. Move the file somewhere safe and offline.', 'ok');
+  });
+
+  $('recoveryCreate').addEventListener('click', async () => {
+    const reply = await send({ type: 'createRecoveryKey' });
+    if (reply.ok) showRecoveryKey(reply.data);
+    else if (reply.error === 'LOCKED') show('lockedView');
+  });
+
+  $('forgotBtn').addEventListener('click', () => { say('recoverMsg', ''); show('recoverView'); $('recoverKey').focus(); });
+  $('recoverBack').addEventListener('click', () => { show('lockedView'); $('unlockPw').focus(); });
+
+  $('recoverForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const pw = $('recoverPw').value;
+    if (pw.length < 8) return say('recoverMsg', 'Use at least 8 characters for the new master password.', 'err');
+    if (pw !== $('recoverPw2').value) return say('recoverMsg', 'The two passwords are different.', 'err');
+    $('recoverBtn').disabled = true;
+    $('recoverBtn').textContent = 'Checking…';
+    const reply = await send({ type: 'recoverWithKey', recoveryKey: $('recoverKey').value, newPassword: pw });
+    $('recoverBtn').disabled = false;
+    $('recoverBtn').textContent = 'Recover and unlock';
+    if (reply.ok && reply.data === true) {
+      $('recoverForm').reset();
+      say('listMsg', 'Recovered. Your new master password is set.', 'ok');
+      await showList();
+      return;
+    }
+    say('recoverMsg', 'That recovery key does not match this vault. Check it and try again.', 'err');
   });
 
   $('unlockForm').addEventListener('submit', async (event) => {
@@ -91,6 +159,8 @@
   async function showList() {
     if (!state.origin) { show('noSiteView'); return; }
     show('listView');
+    const recovery = await send({ type: 'recoveryStatus' });
+    $('recoveryNudge').hidden = !(recovery.ok && !recovery.data.hasRecoveryKey);
     const envReply = await send({ type: 'tabEnv', tabId: state.tab.id, origin: state.origin });
     state.env = envReply.ok ? envReply.data : 'unknown';
     const reply = await send({ type: 'listForSite', origin: state.origin, env: state.env });

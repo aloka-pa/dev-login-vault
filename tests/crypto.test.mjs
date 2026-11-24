@@ -52,3 +52,19 @@ test('default iterations is 600000 and derivation uses it', async () => {
   const explicit = await C.exportKeyB64(await C.deriveKey('pw', salt, 600000));
   assert.equal(byDefault, explicit);
 });
+
+test('recovery keys look like DLV-XXXX-... and are unique', () => {
+  const a = C.newRecoveryKey();
+  assert.match(a, /^DLV(-[0-9A-HJKMNP-TV-Z]{4}){8}$/);
+  assert.notEqual(a, C.newRecoveryKey());
+});
+
+test('recovery key input is forgiving about case, spaces, dashes and look-alike letters', () => {
+  const key = 'DLV-0A1B-2C3D-4E5F-6G7H-8J9K-MNPQ-RSTV-WXYZ';
+  const canonical = C.normalizeRecoveryKey(key);
+  assert.equal(canonical, '0A1B2C3D4E5F6G7H8J9KMNPQRSTVWXYZ');
+  assert.equal(C.normalizeRecoveryKey(' dlv 0a1b2c3d 4e5f6g7h-8j9k mnpq rstv wxyz '), canonical);
+  assert.equal(C.normalizeRecoveryKey('DLV-OA1B-2C3D-4E5F-6G7H-8J9K-MNPQ-RSTV-WXYZ'), canonical); // O read as 0
+  assert.equal(C.normalizeRecoveryKey('DLV-0AlB-2C3D-4E5F-6G7H-8J9K-MNPQ-RSTV-WXYZ'), canonical); // l read as 1
+  assert.equal(C.normalizeRecoveryKey('too short'), null);
+});

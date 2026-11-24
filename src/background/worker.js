@@ -29,6 +29,11 @@ if (typeof importScripts === 'function') {
       return Object.keys(all).filter((k) => k.startsWith('pending:')).map((k) => Number(k.slice(8)));
     }
 
+    /** Waiting logins captured while locked: clear their "!" and show their save card now. */
+    async function afterUnlock() {
+      for (const tabId of await pendingTabIds()) { await deps.setBadge(tabId, ''); await deps.nudgeTopFrame(tabId); }
+    }
+
     const content = {
       async pendingCapture(m, tabId, origin) {
         await service.putPending(tabId, { origin, username: m.username, password: m.password });
@@ -61,9 +66,16 @@ if (typeof importScripts === 'function') {
       setup: (m) => service.setup(m.password),
       async unlock(m) {
         const ok = await service.unlock(m.password);
-        if (ok) for (const tabId of await pendingTabIds()) { await deps.setBadge(tabId, ''); await deps.nudgeTopFrame(tabId); }
+        if (ok) await afterUnlock();
         return ok;
       },
+      async recoverWithKey(m) {
+        const ok = await service.recoverWithKey(m.recoveryKey, m.newPassword);
+        if (ok) await afterUnlock();
+        return ok;
+      },
+      createRecoveryKey: () => service.createRecoveryKey(),
+      recoveryStatus: () => service.recoveryStatus(),
       async lock() {
         const tabs = await pendingTabIds();
         await service.lock();

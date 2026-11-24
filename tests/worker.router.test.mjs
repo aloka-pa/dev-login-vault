@@ -139,3 +139,17 @@ test('sweep clears the badge of an expired waiting login', async () => {
   await route.sweep();
   assert.deepEqual(calls.at(-1), [7, '']);
 });
+
+test('recovery messages work for extension pages only', async () => {
+  const { route, service } = await makeRouter();
+  for (const type of ['createRecoveryKey', 'recoveryStatus', 'recoverWithKey']) {
+    assert.deepEqual(await route({ type }, tabSender()), { ok: false, error: 'FORBIDDEN' }, type);
+  }
+  const created = await route({ type: 'createRecoveryKey' }, pageSender);
+  assert.equal(created.ok, true);
+  assert.equal((await route({ type: 'recoveryStatus' }, pageSender)).data.hasRecoveryKey, true);
+  await service.lock();
+  assert.deepEqual(await route({ type: 'recoverWithKey', recoveryKey: 'wrong', newPassword: 'n' }, pageSender), { ok: true, data: false });
+  assert.deepEqual(await route({ type: 'recoverWithKey', recoveryKey: created.data, newPassword: 'new pw' }, pageSender), { ok: true, data: true });
+  assert.equal((await service.status()).unlocked, true);
+});

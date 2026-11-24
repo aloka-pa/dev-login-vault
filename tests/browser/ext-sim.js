@@ -33,7 +33,7 @@
   window.simReady = (async () => {
     const mode = params.get('state') || 'list';
     if (mode === 'new') return;
-    await service.setup('test-master-pw');
+    window.simRecoveryKey = (await service.setup('test-master-pw')).recoveryKey;
     if (mode === 'na') {
       await service.addEntry({ origin: SITE, env: 'na', username: 'aloka.pa@example.test', password: 'fixture-pw-5', note: 'work account' });
       await service.addEntry({ origin: SITE, env: 'na', username: 'second@example.test', password: 'fixture-pw-6' });

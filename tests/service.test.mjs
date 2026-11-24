@@ -211,13 +211,13 @@ test('settings are stored in the vault', async () => {
   assert.deepEqual(await service.getSettings(), { autoLockMinutes: 30, submitAfterFill: true });
 });
 
-test('changePassword re-encrypts, old password fails', async () => {
+test('changePassword re-locks the vault key, old password fails', async () => {
   const { service, local } = await ready();
   await service.addEntry({ origin: SITE, env: 'local', username: 'ava', password: 'x' });
-  const oldSalt = local.dump().vaultBox.salt;
+  const oldSalt = local.dump().vaultBox.wraps.password.salt;
   assert.equal(await service.changePassword('wrong', 'new pw'), false);
   assert.equal(await service.changePassword('master pw', 'new pw'), true);
-  assert.notEqual(local.dump().vaultBox.salt, oldSalt);
+  assert.notEqual(local.dump().vaultBox.wraps.password.salt, oldSalt);
   await service.lock();
   assert.equal(await service.unlock('master pw'), false);
   assert.equal(await service.unlock('new pw'), true);
@@ -402,4 +402,98 @@ test('import accepts N/A logins', async () => {
   const { service } = await ready();
   const entry = { id: 'x', origin: SITE, env: 'na', username: 'a', password: 'p', note: '', createdAt: 'a', updatedAt: 'a', lastUsedAt: 'a' };
   assert.deepEqual(await service.importVault({ version: 1, entries: [entry], neverSave: [], envLabels: {} }), { added: 1, updated: 0, unchanged: 0 });
+});
+
+// ---- Recovery key ----
+
+const RECOVERY_FORMAT = /^DLV(-[0-9A-HJKMNP-TV-Z]{4}){8}$/;
+
+test('setup returns a recovery key', async () => {
+  const { service } = make();
+  const { recoveryKey } = await service.setup('master pw');
+  assert.match(recoveryKey, RECOVERY_FORMAT);
+  assert.equal((await service.recoveryStatus()).hasRecoveryKey, true);
+});
+
+test('the recovery key unlocks the vault and sets a new master password', async () => {
+  const { service } = make();
+  const { recoveryKey } = await service.setup('master pw');
+  await service.addEntry({ origin: SITE, env: 'local', username: 'ava', password: SECRET });
+  await service.lock();
+  assert.equal(await service.recoverWithKey(recoveryKey.toLowerCase().replace(/-/g, ' '), 'new pw'), true);
+  assert.equal((await service.status()).unlocked, true);
+  assert.equal((await service.listForSite(SITE, 'local')).current[0].username, 'ava');
+  await service.lock();
+  assert.equal(await service.unlock('master pw'), false);
+  assert.equal(await service.unlock('new pw'), true);
+});
+
+test('a wrong recovery key changes nothing', async () => {
+  const { service, local } = make();
+  await service.setup('master pw');
+  await service.lock();
+  const before = JSON.stringify(local.dump());
+  assert.equal(await service.recoverWithKey(DLV.crypto.newRecoveryKey(), 'new pw'), false);
+  assert.equal(await service.recoverWithKey('nonsense', 'new pw'), false);
+  assert.equal((await service.status()).unlocked, false);
+  assert.equal(JSON.stringify(local.dump()), before);
+  assert.equal(await service.unlock('master pw'), true);
+});
+
+test('changing the master password keeps the recovery key working', async () => {
+  const { service } = make();
+  const { recoveryKey } = await service.setup('master pw');
+  assert.equal(await service.changePassword('master pw', 'second pw'), true);
+  await service.lock();
+  assert.equal(await service.recoverWithKey(recoveryKey, 'third pw'), true);
+});
+
+test('a new recovery key replaces the old one and needs an unlocked vault', async () => {
+  const { service } = make();
+  const { recoveryKey: oldKey } = await service.setup('master pw');
+  const newKey = await service.createRecoveryKey();
+  assert.notEqual(newKey, oldKey);
+  await service.lock();
+  await assert.rejects(service.createRecoveryKey(), DLV.VaultService.LockedError);
+  assert.equal(await service.recoverWithKey(oldKey, 'x pw'), false);
+  assert.equal(await service.recoverWithKey(newKey, 'x pw'), true);
+});
+
+test('neither the recovery key nor the vault key is stored readable', async () => {
+  const { service, local, session } = make();
+  const { recoveryKey } = await service.setup('master pw');
+  const disk = JSON.stringify(local.dump());
+  assert.ok(!disk.includes(DLV.crypto.normalizeRecoveryKey(recoveryKey)));
+  assert.ok(!disk.includes(recoveryKey));
+  assert.ok(!disk.includes(session.dump().keyB64));
+});
+
+test('a vault saved by the earlier version is upgraded on unlock without losing logins', async () => {
+  const local = createFakeStorage();
+  const salt = DLV.crypto.randomSaltB64();
+  const oldKey = await DLV.crypto.deriveKey('master pw', salt, 1000);
+  const oldVault = DLV.vault.upsertLogin(DLV.vault.emptyVault(), { origin: SITE, env: 'local', username: 'ava', password: SECRET }, '2026-11-24T08:00:00.000Z').vault;
+  await local.set({ vaultBox: { salt, iterations: 1000, ...(await DLV.crypto.encryptJson(oldKey, oldVault)) } });
+
+  const { service } = make({ local });
+  assert.deepEqual(await service.status(), { initialized: true, unlocked: false });
+  assert.equal(await service.unlock('wrong'), false);
+  assert.equal(await service.unlock('master pw'), true);
+  assert.equal((await service.listForSite(SITE, 'local')).current[0].username, 'ava');
+  assert.equal(local.dump().vaultBox.version, 2);
+  assert.equal((await service.recoveryStatus()).hasRecoveryKey, false);
+  const key = await service.createRecoveryKey();
+  await service.lock();
+  assert.equal(await service.recoverWithKey(key, 'new pw'), true);
+  assert.equal((await service.listForSite(SITE, 'local')).current[0].username, 'ava');
+});
+
+test('an upgraded vault without a recovery key cannot be recovered', async () => {
+  const local = createFakeStorage();
+  const salt = DLV.crypto.randomSaltB64();
+  const oldKey = await DLV.crypto.deriveKey('master pw', salt, 1000);
+  await local.set({ vaultBox: { salt, iterations: 1000, ...(await DLV.crypto.encryptJson(oldKey, DLV.vault.emptyVault())) } });
+  const { service } = make({ local });
+  assert.equal(await service.recoverWithKey(DLV.crypto.newRecoveryKey(), 'new pw'), false);
+  assert.equal(await service.unlock('master pw'), true);
 });

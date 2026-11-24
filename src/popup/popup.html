@@ -29,6 +29,20 @@
       </form>
     </section>
 
+    <!-- Recovery key shown once: after setup or after creating a new one -->
+    <section id="recoveryKeyView" class="dlv-card hero" hidden>
+      <h2>Save your recovery key</h2>
+      <p class="dlv-hint">If you forget your master password, this key is the only way back in. Keep it somewhere safe and offline, such as printed or in a safe place on your phone. Anyone with it can open your vault.</p>
+      <div class="recovery-key" id="recoveryKeyText" aria-label="Recovery key"></div>
+      <div class="row">
+        <button type="button" class="dlv-btn" id="recoveryCopy">Copy</button>
+        <button type="button" class="dlv-btn" id="recoveryDownload">Download .txt</button>
+      </div>
+      <p class="dlv-msg" id="recoveryKeyMsg" role="status" hidden></p>
+      <label class="check"><input type="checkbox" id="recoverySaved"> I have saved my recovery key</label>
+      <button type="button" class="dlv-btn primary block spaced" id="recoveryContinue" disabled>Continue</button>
+    </section>
+
     <!-- Locked -->
     <section id="lockedView" class="dlv-card hero" hidden>
       <div class="lock-art" id="lockArt" aria-hidden="true"></div>
@@ -39,6 +53,24 @@
         <p class="dlv-msg err" id="unlockMsg" role="alert" hidden></p>
         <button type="submit" class="dlv-btn primary block spaced" id="unlockBtn">Unlock</button>
       </form>
+      <button type="button" class="link-btn" id="forgotBtn">Forgot master password?</button>
+    </section>
+
+    <!-- Recover with the recovery key -->
+    <section id="recoverView" class="dlv-card hero" hidden>
+      <h2>Use your recovery key</h2>
+      <p class="dlv-hint">Enter your recovery key and choose a new master password. Your saved logins stay as they are.</p>
+      <form id="recoverForm">
+        <label for="recoverKey">Recovery key</label>
+        <input type="text" id="recoverKey" autocomplete="off" spellcheck="false" placeholder="DLV-XXXX-XXXX-…" required>
+        <label for="recoverPw">New master password</label>
+        <input type="password" id="recoverPw" autocomplete="new-password" required minlength="8" placeholder="At least 8 characters">
+        <label for="recoverPw2">Repeat it</label>
+        <input type="password" id="recoverPw2" autocomplete="new-password" required>
+        <p class="dlv-msg err" id="recoverMsg" role="alert" hidden></p>
+        <button type="submit" class="dlv-btn primary block spaced" id="recoverBtn">Recover and unlock</button>
+      </form>
+      <button type="button" class="link-btn" id="recoverBack">Back to unlock</button>
     </section>
 
     <!-- Not a website -->
@@ -48,6 +80,10 @@
 
     <!-- Logins for this site -->
     <section id="listView" hidden>
+      <div class="nudge" id="recoveryNudge" hidden>
+        <span>No recovery key yet. Without one, a forgotten master password means losing your logins.</span>
+        <button type="button" class="dlv-btn small primary" id="recoveryCreate">Create</button>
+      </div>
       <div class="site">
         <div class="site-text">
           <span class="site-label">Current site</span>

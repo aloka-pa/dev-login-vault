@@ -36,4 +36,10 @@ form > .dlv-btn, form > p > .dlv-btn { margin-top: 14px; }
 .danger-zone { border-color: rgba(255, 107, 107, 0.35); background: linear-gradient(180deg, rgba(255, 107, 107, 0.06), transparent 60%), var(--dlv-surface); }
 .danger-zone h2 { color: #FF9A9A; }
 
+.recovery-key {
+  padding: 12px; border-radius: var(--dlv-radius); border: 1px dashed var(--dlv-orange); background: var(--dlv-bg);
+  color: var(--dlv-orange); font: 600 15px/1.6 "Cascadia Mono", Consolas, monospace; letter-spacing: 0.5px;
+  text-align: center; user-select: all;
+}
+
 .unlock-card { max-width: 420px; justify-self: center; width: 100%; }

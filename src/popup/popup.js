@@ -167,47 +167,7 @@
     if (!reply.ok) { if (reply.error === 'LOCKED') { show('lockedView'); return; } say('listMsg', 'Could not read the vault.', 'err'); return; }
     state.list = reply.data;
     render();
-    renderHosts();
   }
-
-  // ---- Hosts file switch (needs the hosts helper; hidden when it is not installed or the site is not in the file) ----
-  async function renderHosts() {
-    $('hostsRow').hidden = true;
-    const reply = await send({ type: 'hostsList' });
-    if (!reply.ok || !reply.data || !reply.data.ok) return;
-    const host = new URL(state.origin).hostname.toLowerCase();
-    const entry = reply.data.entries.find((e) => e.hosts.some((h) => h.toLowerCase() === host));
-    if (!entry) return;
-    state.hostsEntry = { host, active: entry.active };
-    const text = $('hostsText');
-    text.replaceChildren(document.createTextNode('Hosts file: '),
-      el('strong', {}, entry.active ? `${labelOf('local')} (this computer)` : labelOf('remote')));
-    $('hostsSwitchBtn').textContent = entry.active ? 'Switch to Server' : 'Switch to Local';
-    $('hostsSwitchBtn').disabled = false;
-    $('hostsRow').hidden = false;
-  }
-
-  $('hostsSwitchBtn').addEventListener('click', async () => {
-    const { host, active } = state.hostsEntry;
-    $('hostsSwitchBtn').disabled = true;
-    say('hostsMsg', 'Waiting for the Windows "Allow changes?" prompt…', '');
-    const reply = await send({ type: 'hostsSet', host, local: !active });
-    const result = reply.ok ? reply.data : { ok: false, error: reply.error };
-    if (result.ok) {
-      const others = (result.affected || []).filter((h) => h.toLowerCase() !== host);
-      say('hostsMsg', `Switched${others.length ? ` (also ${others.join(', ')}, same line)` : ''}. Reloading the page…`, 'ok');
-      await chrome.tabs.reload(state.tab.id, { bypassCache: true });
-      setTimeout(() => window.close(), 900);
-      return;
-    }
-    const messages = {
-      CANCELLED: 'Cancelled in the Windows prompt. Nothing changed.',
-      HOSTS_CHANGED: 'The hosts file changed in the meantime. Nothing changed; try again.',
-      HELPER_MISSING: 'The hosts helper is not installed (see Settings).',
-    };
-    say('hostsMsg', messages[result.error] || 'Could not change the hosts file. Nothing changed.', 'err');
-    $('hostsSwitchBtn').disabled = false;
-  });
 
   const labelOf = (env) => state.list.labels[env] || env;
 

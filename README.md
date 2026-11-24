@@ -81,32 +81,6 @@ your database, e.g. "Local IIS – philippinesdev" and "Server – hrmmain_phili
 Environment names, and the tab shows them as "Local IIS · philippinesdev". While the vault is locked, only pages served
 from this computer show the strip (with the default name). Turn it off in Settings → Filling.
 
-### Hosts-file switcher (optional helper)
-
-Switch a site between your local IIS and the server without editing `C:\Windows\System32\drivers\etc\hosts` by hand.
-A small Node.js helper in `native/` does the work; Windows asks **"Allow changes?"** every time it writes the file.
-
-**Install once** (needs Node.js on PATH; no admin):
-
-1. Copy the extension ID from the card in `edge://extensions` (and `chrome://extensions` if you use both).
-2. In PowerShell, from this folder:
-
-   ```powershell
-   powershell -ExecutionPolicy Bypass -File native\install-hosts-helper.ps1 -ExtensionId <edge-id>,<chrome-id>
-   ```
-
-3. Reload the extension.
-
-**Use:** on a site that has a `127.0.0.1` line in the hosts file, the popup shows *Hosts file: Local IIS / Server* and a
-**Switch** button; Settings → Hosts file lists every such line. After you click **Yes** in the Windows prompt the helper
-turns the line on or off, keeps a backup (`hosts.dev-login-vault.bak`), clears the Windows DNS cache and the page reloads.
-The banner shows where the page really came from; if it still says the old environment, wait a few seconds and reload
-(the browser can keep an open connection to the old address for a short time).
-
-- The helper only switches existing `127.0.0.1` / `::1` lines; it never adds lines and never touches `localhost`.
-- Before writing, the elevated step checks that neither the prepared file nor the hosts file changed in the meantime.
-- Remove it with `native\uninstall-hosts-helper.ps1` (the hosts file itself is not changed).
-
 ### Switch user (EHRM)
 
 On EHRM pages the popup shows **Switch user**. It signs you out (`<app>/security/logoff`, e.g. `/hr/security/logoff`);

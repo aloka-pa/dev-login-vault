@@ -11,9 +11,9 @@ test('manifest is valid MV3', () => {
   assert.equal(read().manifest_version, 3);
 });
 
-test('permissions are exactly storage, webRequest, scripting, idle, nativeMessaging', () => {
+test('permissions are exactly storage, webRequest, scripting, idle', () => {
   const m = read();
-  assert.deepEqual([...m.permissions].sort(), ['idle', 'nativeMessaging', 'scripting', 'storage', 'webRequest']);
+  assert.deepEqual([...m.permissions].sort(), ['idle', 'scripting', 'storage', 'webRequest']);
   assert.deepEqual(m.host_permissions, ['<all_urls>']);
 });
 

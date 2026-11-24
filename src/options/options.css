@@ -36,14 +36,6 @@ form > .dlv-btn, form > p > .dlv-btn { margin-top: 14px; }
 .danger-zone { border-color: rgba(255, 107, 107, 0.35); background: linear-gradient(180deg, rgba(255, 107, 107, 0.06), transparent 60%), var(--dlv-surface); }
 .danger-zone h2 { color: #FF9A9A; }
 
-.code {
-  margin: 8px 0; padding: 10px 12px; border-radius: var(--dlv-radius); background: var(--dlv-bg); border: 1px solid var(--dlv-border);
-  font: 12px/1.5 "Cascadia Mono", Consolas, monospace; color: var(--dlv-text); white-space: pre-wrap; word-break: break-all;
-}
-.host-state { font-size: 12px; font-weight: 650; margin-left: auto; margin-right: 8px; white-space: nowrap; }
-.host-state.on { color: var(--dlv-orange); }
-.host-state.off { color: var(--dlv-navy-light); }
-
 .recovery-key {
   padding: 12px; border-radius: var(--dlv-radius); border: 1px dashed var(--dlv-orange); background: var(--dlv-bg);
   color: var(--dlv-orange); font: 600 15px/1.6 "Cascadia Mono", Consolas, monospace; letter-spacing: 0.5px;

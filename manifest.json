@@ -3,7 +3,7 @@
   "name": "Dev Login Vault",
   "version": "1.0.0",
   "description": "Saves and fills your logins, encrypted on this device. Tells the local IIS copy of a site from the server copy.",
-  "permissions": ["storage", "webRequest", "scripting", "idle", "nativeMessaging"],
+  "permissions": ["storage", "webRequest", "scripting", "idle"],
   "host_permissions": ["<all_urls>"],
   "background": { "service_worker": "src/background/worker.js" },
   "action": {

@@ -160,28 +160,3 @@ test('bannerInfo answers only the top frame', async () => {
   assert.deepEqual(await route({ type: 'bannerInfo' }, tabSender()), { ok: true, data: { env: 'local', label: 'Local IIS' } });
   assert.deepEqual(await route({ type: 'bannerInfo' }, tabSender(undefined, 3)), { ok: true, data: null });
 });
-
-test('hosts helper messages go to the helper, from extension pages only', async () => {
-  const { route, service } = await makeRouter();
-  const sent = [];
-  const r2 = DLV.createRouter(service, {
-    tabUrl: async () => SITE, injectFill: async () => true, setBadge: async () => {}, nudgeTopFrame: async () => {}, applyIdle: async () => {},
-    extensionOrigin: 'chrome-extension://ext',
-    native: async (m) => { sent.push(m); return m.type === 'list' ? { ok: true, entries: [] } : { ok: false, error: 'CANCELLED' }; },
-  });
-  assert.deepEqual(await r2({ type: 'hostsList' }, tabSender()), { ok: false, error: 'FORBIDDEN' });
-  assert.deepEqual(await r2({ type: 'hostsList' }, pageSender), { ok: true, data: { ok: true, entries: [] } });
-  assert.deepEqual(await r2({ type: 'hostsSet', host: 'main.test', local: false }, pageSender), { ok: true, data: { ok: false, error: 'CANCELLED' } });
-  assert.deepEqual(sent, [{ type: 'list' }, { type: 'set', host: 'main.test', local: false }]);
-  assert.deepEqual(await route({ type: 'hostsList' }, pageSender), { ok: false, error: 'HELPER_MISSING' });
-});
-
-test('a helper that is not installed is reported as missing', async () => {
-  const { service } = await makeRouter();
-  const r = DLV.createRouter(service, {
-    tabUrl: async () => SITE, injectFill: async () => true, setBadge: async () => {}, nudgeTopFrame: async () => {}, applyIdle: async () => {},
-    extensionOrigin: 'chrome-extension://ext',
-    native: async () => { throw new Error('Specified native messaging host not found.'); },
-  });
-  assert.deepEqual(await r({ type: 'hostsList' }, pageSender), { ok: false, error: 'HELPER_MISSING' });
-});

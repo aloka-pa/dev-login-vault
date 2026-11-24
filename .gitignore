@@ -4,10 +4,6 @@
 # Export files hold encrypted logins: never commit them
 *.dlv.json
 
-# Hosts helper files generated per machine by native/install-hosts-helper.ps1
-native/run-host.bat
-native/dev_login_vault.hosts.json
-
 # Editors / OS
 .vscode/
 .idea/

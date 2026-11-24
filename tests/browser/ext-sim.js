@@ -28,21 +28,6 @@
     injectFill: async (tabId, username) => { log.push(`filled ${username}`); return true; },
     setBadge: async () => {}, nudgeTopFrame: async () => {}, applyIdle: async () => {},
     extensionOrigin: location.origin,
-    // Fake hosts helper: ?hosts=missing | cancel | (default) works.
-    async native(message) {
-      const mode = params.get('hosts');
-      if (mode === 'missing') throw new Error('Specified native messaging host not found.');
-      const lines = (window.simHosts = window.simHosts || [
-        { line: 5, ip: '127.0.0.1', hosts: [new URL(SITE).hostname], active: (params.get('env') || 'local') === 'local' },
-        { line: 4, ip: '127.0.0.1', hosts: ['echoengineers.phrsandbox.dev'], active: false },
-      ]);
-      if (message.type === 'list') return { ok: true, entries: lines };
-      if (mode === 'cancel') return { ok: false, error: 'CANCELLED' };
-      const entry = lines.find((l) => l.hosts.includes(message.host));
-      entry.active = message.local;
-      log.push(`hosts ${message.host} -> ${message.local ? 'local' : 'server'}`);
-      return { ok: true, changed: true, affected: entry.hosts, entries: lines };
-    },
   });
 
   window.simReady = (async () => {
@@ -70,11 +55,7 @@
       openOptionsPage: () => log.push('openOptionsPage'),
       onMessage: { addListener() {} },
     },
-    tabs: {
-      query: async () => [TAB],
-      update: async (id, props) => { log.push(`tab ${id} -> ${props.url}`); },
-      reload: async (id) => { log.push(`tab ${id} reloaded`); },
-    },
+    tabs: { query: async () => [TAB], update: async (id, props) => { log.push(`tab ${id} -> ${props.url}`); } },
   };
   window.close = () => log.push('popup closed');
 })();
